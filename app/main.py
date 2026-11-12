@@ -25,10 +25,6 @@ DASHBOARD_HTML = r"""<!doctype html>
 <div class="notice"><b>Preview environment:</b> This page contains fictional sample records only. Google Workspace sign-in restricted to <b>@linktms.com</b>, individual user approval, and live database-backed dashboard actions are not enabled yet. Do not enter real customer or candidate information.</div>
 <div class="footer">CanberraAI LeadPilot · Prepared for LinkTMS · Version 0.1 preview</div></main></div></body></html>"""
 
-@app.get("/", response_class=HTMLResponse)
-def dashboard_preview():
-    return DASHBOARD_HTML
-
 from pydantic import BaseModel, Field
 from sqlalchemy import create_engine, String, Text, ForeignKey, DateTime, select, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, Session
@@ -71,6 +67,11 @@ app = FastAPI(
     version="0.1.0",
     description="Recruitment sales lead intelligence and team collaboration"
 )
+
+
+@app.get("/", response_class=HTMLResponse)
+def dashboard_preview():
+    return DASHBOARD_HTML
 
 def db_session():
     with SessionLocal() as db:
