@@ -13,6 +13,37 @@ DASHBOARD_HTML = r"""<!doctype html>
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px Inter,system-ui,Segoe UI,Arial}
 .layout{display:flex;min-height:100vh}.side{width:230px;background:var(--nav);color:#fff;padding:26px 18px}.brand{font-size:20px;font-weight:750;letter-spacing:-.5px}.brand span{color:#8da8ff}.org{margin:8px 0 32px;color:#aab6ce;font-size:12px}.nav{display:block;width:100%;text-align:left;border:0;background:transparent;font:inherit;cursor:pointer;padding:12px 14px;border-radius:9px;color:#cbd4e5;margin:5px 0}.nav.active{background:#26385f;color:white}.page{display:none}.page.active{display:block}.empty{padding:28px;color:var(--muted)}.main{flex:1;padding:30px;max-width:1500px;margin:auto}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}.eyebrow{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:1px}.h{font-size:27px;font-weight:750;margin:6px 0}.sub{color:var(--muted)}.pill{background:#fff2d7;color:#8a5a00;padding:8px 12px;border-radius:20px;font-weight:650;font-size:12px}.cards{display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:14px;margin:26px 0}.card,.panel{background:white;border:1px solid var(--line);border-radius:13px;padding:18px}.metric{font-size:27px;font-weight:750;margin:10px 0 3px}.muted{color:var(--muted);font-size:12px}.panel{padding:0;overflow:hidden}.panelhead{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px}.panelhead h2{font-size:16px;margin:0}.btn{border:0;border-radius:8px;padding:10px 14px;background:var(--blue);color:white;font-weight:650}.tablewrap{overflow:auto}table{border-collapse:collapse;width:100%;min-width:650px}th,td{text-align:left;padding:14px 18px;border-bottom:1px solid var(--line)}th{font-size:11px;text-transform:uppercase;color:var(--muted);letter-spacing:.6px}td{font-size:13px}.status{background:#e9f7f0;color:var(--green);padding:5px 9px;border-radius:14px;font-size:11px;font-weight:650}.tag{color:#52617a;background:#f0f3f8;padding:5px 8px;border-radius:6px;font-size:11px}.notice{margin-top:18px;padding:14px 16px;border:1px solid #f0d69b;background:#fff9e9;border-radius:10px;color:#76520d;line-height:1.5}.footer{color:var(--muted);font-size:11px;margin-top:18px}
 @media(max-width:800px){.side{width:65px;padding:20px 10px}.brand{font-size:0}.brand:first-letter{font-size:20px}.org,.nav:not(.active){display:none}.nav.active{font-size:0}.nav.active:first-letter{font-size:14px}.main{padding:20px 14px}.cards{grid-template-columns:repeat(2,minmax(120px,1fr))}}
+
+/* Azure-inspired enterprise theme */
+:root{--bg:#f3f6fb;--ink:#1b1a19;--muted:#605e5c;--line:#e1dfdd;--blue:#0078d4;--nav:#ffffff;--green:#107c10}
+body{background:#f3f6fb;color:#201f1e;font-family:"Segoe UI",Inter,system-ui,Arial,sans-serif}
+.layout{background:#f3f6fb}
+.side{background:#fff;color:#201f1e;border-right:1px solid #e1dfdd;padding:24px 16px;box-shadow:1px 0 4px rgba(0,0,0,.035)}
+.brand{color:#0078d4;font-size:21px;letter-spacing:-.6px}
+.brand span{color:#323130}
+.org{color:#605e5c;border-bottom:1px solid #edebe9;padding-bottom:18px;margin-bottom:20px}
+.nav{color:#323130;border-radius:4px;padding:11px 12px;margin:3px 0;border-left:3px solid transparent}
+.nav:hover{background:#f3f2f1;color:#0078d4}
+.nav.active{background:#deecf9;color:#005a9e;border-left-color:#0078d4;font-weight:650}
+.main{padding:30px 34px;max-width:1600px}
+.h{font-size:28px;font-weight:600;letter-spacing:-.5px;color:#201f1e}
+.eyebrow{color:#605e5c;letter-spacing:.7px}
+.card,.panel{background:#fff;border:1px solid #e1dfdd;border-radius:4px;box-shadow:0 1px 2px rgba(0,0,0,.035)}
+.cards{gap:16px}
+.card{border-top:3px solid #0078d4;padding:17px 19px}
+.metric{color:#0078d4;font-size:29px;font-weight:600}
+.panel{border-radius:4px}
+.panelhead{background:#fff;border-bottom:1px solid #edebe9}
+.panelhead h2{font-weight:600;color:#323130}
+.btn{background:#0078d4;border-radius:3px;padding:9px 15px}
+.btn:hover{background:#106ebe}
+th{background:#faf9f8;color:#605e5c}
+td{color:#323130}
+.status{background:#dff6dd;color:#107c10;border-radius:3px}
+.tag{background:#f3f2f1;color:#323130;border-radius:3px}
+.pill{background:#fff4ce;color:#8a6d00;border-radius:3px}
+.notice{border-radius:4px}
+@media(max-width:800px){.side{background:#fff}.main{padding:20px 14px}}
 </style></head><body><div class="layout"><aside class="side"><div class="brand">Canberra<span>AI</span></div><div class="org">LEADPILOT · LINKTMS</div><button class="nav active" data-page="overview">▦ &nbsp; Overview</button><button class="nav" data-page="leads">◎ &nbsp; Leads</button><button class="nav" data-page="followups">◷ &nbsp; Follow-ups</button><button class="nav" data-page="team">♙ &nbsp; Team</button><button class="nav" data-page="settings">⚙ &nbsp; Settings</button></aside>
 <main class="main"><section id="page-overview" class="page active"><div class="top"><div><div class="eyebrow">LinkTMS workspace</div><div class="h">Lead intelligence</div><div class="sub">Recruitment sales pipeline overview</div></div><div class="pill">DEMO PREVIEW · SAMPLE DATA</div></div>
 <section class="cards"><div class="card"><div class="muted">Total leads</div><div class="metric">128</div><div class="muted">Illustrative sample</div></div><div class="card"><div class="muted">New this week</div><div class="metric">24</div><div class="muted">Illustrative sample</div></div><div class="card"><div class="muted">Follow-ups due</div><div class="metric">17</div><div class="muted">Illustrative sample</div></div><div class="card"><div class="muted">Qualified</div><div class="metric">36</div><div class="muted">Illustrative sample</div></div></section>
