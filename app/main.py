@@ -73,7 +73,55 @@ body{background:var(--canvas);color:var(--text);font-family:"Segoe UI Variable",
 .settings-tab{border-radius:3px}.settings-tab.active{background:#e8f3fc}
 .pending{border-radius:3px}
 @media(max-width:800px){.side{width:72px}.main{padding:20px 14px}}
-</style></head><body><div class="layout"><aside class="side"><div class="brand">Canberra<span>AI</span></div><div class="org">LEADPILOT · LINKTMS</div><button class="nav active" data-page="overview">▦ &nbsp; Overview</button><button class="nav" data-page="leads">◎ &nbsp; Leads</button><button class="nav" data-page="followups">◷ &nbsp; Follow-ups</button><button class="nav" data-page="team">♙ &nbsp; Team</button><button class="nav" data-page="grokbot">✦ &nbsp; GrokBot</button><button class="nav" data-page="settings">⚙ &nbsp; Settings</button></aside>
+
+/* Responsive layout: desktop, tablet and mobile */
+.mobilebar{display:none}
+.mobile-scrim{display:none}
+@media (max-width:1100px){
+  .main{padding:28px 24px}
+  .cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .settings-layout{grid-template-columns:190px minmax(0,1fr)}
+}
+@media (max-width:760px){
+  html,body{width:100%;min-height:100%;overflow-x:hidden}
+  .layout{display:block;min-height:100vh}
+  .mobilebar{display:flex;position:sticky;top:0;z-index:30;height:58px;align-items:center;gap:12px;padding:0 14px;background:#fff;border-bottom:1px solid #e5e7eb;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+  .mobilebar button{width:38px;height:38px;border:1px solid #d1d5db;background:#fff;border-radius:4px;color:#005a9e;font-size:20px}
+  .mobilebar strong{font-size:17px;color:#0078d4}
+  .mobilebar small{margin-left:auto;color:#616161;font-size:11px}
+  .side{position:fixed;z-index:50;left:0;top:0;bottom:0;width:min(290px,84vw);padding:22px 16px;overflow-y:auto;transform:translateX(-105%);transition:transform .22s ease;box-shadow:4px 0 18px rgba(0,0,0,.14)}
+  body.menu-open .side{transform:translateX(0)}
+  body.menu-open .mobile-scrim{display:block;position:fixed;inset:0;z-index:40;background:rgba(17,24,39,.38)}
+  .side .brand{font-size:22px}
+  .side .org{display:block}
+  .side .nav,.side .nav:not(.active){display:block;width:100%;font-size:14px;text-align:left;padding:13px 14px;margin:4px 0}
+  .side .nav.active{font-size:14px}
+  .main{width:100%;max-width:none;margin:0;padding:22px 16px 34px}
+  .h{font-size:25px}
+  .cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:18px 0}
+  .card{padding:14px}
+  .metric{font-size:24px}
+  .panelhead{padding:14px;align-items:flex-start}
+  .panelhead h2{font-size:15px}
+  .tablewrap{max-width:calc(100vw - 34px)}
+  .settings-layout{grid-template-columns:1fr;gap:12px}
+  .settings-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+  .settings-tab{font-size:12px;padding:10px 8px}
+  .setting-card{padding:15px}
+  .setting-grid{grid-template-columns:1fr;gap:12px}
+  .top{align-items:flex-start}
+  .pill{font-size:10px}
+}
+@media (max-width:380px){
+  .cards{grid-template-columns:1fr}
+  .settings-nav{grid-template-columns:1fr 1fr}
+  .main{padding-left:12px;padding-right:12px}
+}
+@media (min-width:761px){
+  .mobilebar,.mobile-scrim{display:none!important}
+  .side{position:sticky;top:0;height:100vh;flex:0 0 248px;overflow-y:auto}
+}
+</style></head><body><div class="mobilebar"><button type="button" id="menuToggle" aria-label="Open navigation">☰</button><strong>CanberraAI</strong><small>LEADPILOT</small></div><div class="mobile-scrim" id="mobileScrim"></div><div class="layout"><aside class="side"><div class="brand">Canberra<span>AI</span></div><div class="org">LEADPILOT · LINKTMS</div><button class="nav active" data-page="overview">▦ &nbsp; Overview</button><button class="nav" data-page="leads">◎ &nbsp; Leads</button><button class="nav" data-page="followups">◷ &nbsp; Follow-ups</button><button class="nav" data-page="team">♙ &nbsp; Team</button><button class="nav" data-page="grokbot">✦ &nbsp; GrokBot</button><button class="nav" data-page="settings">⚙ &nbsp; Settings</button></aside>
 <main class="main"><section id="page-overview" class="page active"><div class="top"><div><div class="eyebrow">LinkTMS workspace</div><div class="h">Lead intelligence</div><div class="sub">Recruitment sales pipeline overview</div></div><div class="pill">DEMO PREVIEW · SAMPLE DATA</div></div>
 <section class="cards"><div class="card"><div class="muted">Total leads</div><div class="metric">128</div><div class="muted">Illustrative sample</div></div><div class="card"><div class="muted">New this week</div><div class="metric">24</div><div class="muted">Illustrative sample</div></div><div class="card"><div class="muted">Follow-ups due</div><div class="metric">17</div><div class="muted">Illustrative sample</div></div><div class="card"><div class="muted">Qualified</div><div class="metric">36</div><div class="muted">Illustrative sample</div></div></section>
 <section class="panel"><div class="panelhead"><h2>Recent lead activity</h2><button class="btn" onclick="alert('This preview uses sample data. Sign-in and live lead actions will be enabled after secure deployment.')">＋ Add lead</button></div><div class="tablewrap"><table><thead><tr><th>Company</th><th>Signal</th><th>Region</th><th>Owner</th><th>Status</th></tr></thead><tbody>
@@ -112,7 +160,7 @@ body{background:var(--canvas);color:var(--text);font-family:"Segoe UI Variable",
 <div id="setting-api" class="settings-pane"><div class="setting-card"><h3>API Management <span class="pending">Backend pending</span></h3><div class="setting-grid"><div class="setting-field"><label>Public API base URL</label><input value="https://leads.canberravision.com/api" readonly></div><div class="setting-field"><label>Rate limit (requests/minute)</label><input type="number" value="60"></div></div><p class="setting-help">API key issuance, revocation, webhooks and integration health checks will be connected after authentication and permissions are implemented.</p></div></div>
 <div id="setting-data" class="settings-pane"><div class="setting-card"><h3>Database & Storage <span class="pending">Backend pending</span></h3><div class="setting-grid"><div class="setting-field"><label>Database</label><input value="PostgreSQL 16" readonly></div><div class="setting-field"><label>Backup frequency</label><select><option>Daily</option><option>Every 6 hours</option><option>Weekly</option></select></div><div class="setting-field"><label>Data retention (days)</label><input type="number" value="365"></div><div class="setting-field"><label>Storage mode</label><select><option>VPS local volume</option><option>Object storage</option></select></div></div><p class="setting-help">Backup scheduling, restore operations and retention enforcement are not wired yet.</p></div></div>
 <div id="setting-security" class="settings-pane"><div class="setting-card"><h3>Identity & Access <span class="pending">Backend pending</span></h3><div class="setting-grid"><div class="setting-field"><label>Identity provider</label><select><option>Google Workspace</option></select></div><div class="setting-field"><label>Allowed email domain</label><input value="@linktms.com" readonly></div><div class="setting-field"><label>Default role</label><select><option>Sales representative</option><option>Manager</option><option>Administrator</option></select></div><div class="setting-field"><label>New user approval</label><select><option>Admin approval required</option><option>Automatic (not recommended)</option></select></div></div><p class="setting-help">Google sign-in, domain verification, user approval, role enforcement and audit logs still need implementation.</p></div></div>
-</div></div></section><script>document.querySelectorAll(".settings-tab[data-setting]").forEach(function(button){button.addEventListener("click",function(){document.querySelectorAll(".settings-tab").forEach(function(b){b.classList.remove("active")});document.querySelectorAll(".settings-pane").forEach(function(p){p.classList.remove("active")});button.classList.add("active");document.getElementById("setting-"+button.dataset.setting).classList.add("active")})});document.querySelectorAll(".nav[data-page]").forEach(function(button){button.addEventListener("click",function(){document.querySelectorAll(".nav").forEach(function(b){b.classList.remove("active")});document.querySelectorAll(".page").forEach(function(p){p.classList.remove("active")});button.classList.add("active");document.getElementById("page-"+button.dataset.page).classList.add("active")})});</script></main></div></body></html>"""
+</div></div></section><script>const menuToggle=document.getElementById("menuToggle");const mobileScrim=document.getElementById("mobileScrim");if(menuToggle){menuToggle.addEventListener("click",function(){document.body.classList.toggle("menu-open")})}if(mobileScrim){mobileScrim.addEventListener("click",function(){document.body.classList.remove("menu-open")})};document.querySelectorAll(".settings-tab[data-setting]").forEach(function(button){button.addEventListener("click",function(){document.querySelectorAll(".settings-tab").forEach(function(b){b.classList.remove("active")});document.querySelectorAll(".settings-pane").forEach(function(p){p.classList.remove("active")});button.classList.add("active");document.getElementById("setting-"+button.dataset.setting).classList.add("active")})});document.querySelectorAll(".nav[data-page]").forEach(function(button){button.addEventListener("click",function(){document.querySelectorAll(".nav").forEach(function(b){b.classList.remove("active")});document.querySelectorAll(".page").forEach(function(p){p.classList.remove("active")});button.classList.add("active");document.getElementById("page-"+button.dataset.page).classList.add("active");document.body.classList.remove("menu-open")})});</script></main></div></body></html>"""
 
 from pydantic import BaseModel, Field
 from sqlalchemy import create_engine, String, Text, ForeignKey, DateTime, select, func
