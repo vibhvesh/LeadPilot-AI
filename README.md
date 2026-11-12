@@ -34,3 +34,10 @@ Do not paste these secrets into chat or commit `.env` to GitHub. If lost, rotate
 
 ## Release status
 This repository is the initial development scaffold, not a completed production Version 1. Google/Microsoft OIDC, full role-based access, browser dashboard, automated lead discovery providers, audit logging, database migrations, HTTPS reverse proxy and tested backup/restore remain to be implemented before production use. Do not expose the development API publicly.
+
+
+## Authentication architecture
+
+The approved target is multi-company sign-in through Microsoft Entra ID (any organisational tenant) and Google OpenID Connect. CanberraAI will own company membership, user approval, roles, and tenant-level data isolation. See [Multi-company authentication design](docs/AUTHENTICATION.md).
+
+**Important:** Microsoft/Google OIDC routes and company-scoped RBAC are not active in this scaffold yet. The environment template contains placeholders only; do not enter real provider secrets in GitHub. Do not expose the API publicly until authentication and authorization are implemented and tested.
