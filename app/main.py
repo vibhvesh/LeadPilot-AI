@@ -39,7 +39,11 @@ class Feedback(Base):
     reason: Mapped[str] = mapped_column(Text, default="")
 
 Base.metadata.create_all(engine)
-app = FastAPI(title="LeadPilot AI", version="0.1.0")
+app = FastAPI(
+    title="CanberraAI Lead Generation System for TMS LLC",
+    version="0.1.0",
+    description="Recruitment sales lead intelligence and team collaboration"
+)
 
 def db_session():
     with SessionLocal() as db:
@@ -50,11 +54,11 @@ def require_admin(x_admin_key: Optional[str] = Header(default=None)):
     if not expected or x_admin_key != expected:
         raise HTTPException(403, "Admin key required")
 
-# Until OAuth and RBAC are implemented, all lead mutations require the admin key.
+# Temporary development gate. Replace with authenticated user RBAC before production.
 @app.get("/health")
 def health(db: Session = Depends(db_session)):
     db.execute(select(1))
-    return {"status": "ok"}
+    return {"status": "ok", "product": "CanberraAI Lead Generation System", "customer": "TMS LLC"}
 
 class LeadIn(BaseModel):
     company: str = Field(min_length=2, max_length=250)
