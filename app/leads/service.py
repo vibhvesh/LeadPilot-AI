@@ -210,7 +210,7 @@ def review_lead(db: Session, actor: User, lead_id: int, decision: str, note: str
     return lead_dict(lead, _owners(db, [lead]))
 
 
-def ingest_lead(db: Session, actor: User, data: dict, *, source: str, request_id: int | None = None) -> str:
+def ingest_lead(db: Session, actor: User, data: dict, *, source: str, request_id: int | None = None, min_score: int | None = None) -> str:
     """Deduplicate, enrich, and score one lead. The caller commits."""
     company = str(data.get("company") or "").strip()
     if len(company) < 2:
@@ -257,4 +257,7 @@ def ingest_lead(db: Session, actor: User, data: dict, *, source: str, request_id
 
     enrich(db, lead)
     apply_score(db, actor, lead)
+    if min_score is not None and lead.score is not None and lead.score < min_score:
+        db.delete(lead)
+        return "below_score"
     return "created"

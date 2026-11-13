@@ -6,7 +6,7 @@ from app.models.bot import BotConnection, BotMessage, BotToken, DeepSearchReques
 from app.models.identity import RolePermission, SessionToken, User, UserPermission
 from app.models.leads import LEAD_STATUSES, Comment, FollowUp, Lead
 from app.models.providers import LLMConfig, ProviderAccess, ProviderKey, ProviderUsage
-from app.models.search import AiSearchRun, SearchCriteria, SearchRun
+from app.models.search import AiSearchRun, SearchCriteria, SearchPreset, SearchRun
 from app.models.workspace import WorkspaceSettings
 
 __all__ = [
@@ -27,6 +27,7 @@ __all__ = [
     "ProviderUsage",
     "RolePermission",
     "SearchCriteria",
+    "SearchPreset",
     "SearchRun",
     "SessionToken",
     "User",

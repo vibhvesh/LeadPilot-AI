@@ -402,11 +402,7 @@ $("role-save").addEventListener("click", async () => {
 });
 
 async function loadSearch() {
-  const geo = await api("/api/geo").catch(() => ({}));
-  if (geo.country && !$("s-country").value) {
-    $("s-country").value = geo.country; $("s-state").value = geo.state || ""; $("s-district").value = geo.district || "";
-    $("s-city").value = geo.city || ""; $("s-postal").value = geo.postal_code || "";
-  }
+  if (window.SearchForm) await SearchForm.refresh();
   const [saved, runs] = await Promise.all([api("/api/search/criteria"), api("/api/search/runs")]);
   $("s-list").innerHTML = saved.map((row) => `<div class="item"><b>${esc(row.name)}</b><div class="muted">${esc([row.industry, row.keywords, row.city, row.country].filter(Boolean).join(" · "))}</div>
     ${can("search", true) ? `<div class="row"><button class="btn small" type="button" data-run="${row.id}">Run again</button><button class="btn small secondary" type="button" data-del="${row.id}">Delete</button></div>` : ""}</div>`).join("")
@@ -444,7 +440,8 @@ async function loadAiSearch() {
 }
 $("ai-run").addEventListener("click", async () => {
   try {
-    const result = await api("/api/search/ai", {method: "POST", body: {text: $("ai-text").value}});
+    const criteria = window.SearchForm ? SearchForm.payload("ai") : {};
+    const result = await api("/api/search/ai", {method: "POST", body: {text: $("ai-text").value, criteria}});
     toast(`Saved ${result.created_count} leads`);
     loadSearch();
   } catch (error) {
@@ -454,7 +451,10 @@ $("ai-run").addEventListener("click", async () => {
 });
 $("ai-deep").addEventListener("click", async () => {
   try {
-    const result = await api("/api/search/deep", {method: "POST", body: {text: $("ai-text").value}});
+    const criteria = window.SearchForm ? SearchForm.payload("ai") : {};
+    const extra = (criteria.query_templates || []).join("\n");
+    const text = [$("ai-text").value.trim(), extra].filter(Boolean).join("\n");
+    const result = await api("/api/search/deep", {method: "POST", body: {text}});
     toast(result.webhook_status === "sent" ? "Grok Bot notified" : "Deep search queued");
     loadSearch();
   } catch (error) {
@@ -481,11 +481,7 @@ async function runSearch(id) {
 $("s-save").addEventListener("click", async () => {
   $("s-error").textContent = "";
   try {
-    const saved = await api("/api/search/criteria", {method: "POST", body: {
-      name: $("s-name").value, industry: $("s-industry").value, keywords: $("s-keywords").value, company_size: $("s-size").value,
-      country: $("s-country").value, state: $("s-state").value, district: $("s-district").value, city: $("s-city").value,
-      postal_code: $("s-postal").value, results_limit: Number($("s-limit").value || 10),
-    }});
+    const saved = await api("/api/search/criteria", {method: "POST", body: SearchForm.payload("saved")});
     await runSearch(saved.id);
   } catch (error) { $("s-error").textContent = error.message; }
 });
@@ -587,6 +583,7 @@ async function loadSettings() {
   $("set-seller").value = data.seller_name || "";
   $("set-offering").value = data.offering || "";
   $("set-customer").value = data.ideal_customer || "";
+  if (window.SearchForm) await SearchForm.mountSettings(data);
   const tokens = await api("/api/settings/bot-tokens");
   $("bot-tokens").innerHTML = tokens.map((token) => `<div class="item"><b>${esc(token.name)}</b> ${esc(token.hint)} · ${token.revoked ? "Revoked" : "Active"}
     ${!token.revoked && can("settings", true) ? `<div><button class="btn small secondary" type="button" data-revoke="${token.id}">Revoke</button></div>` : ""}</div>`).join("") || `<div class="muted">No bot tokens yet.</div>`;
@@ -601,10 +598,12 @@ async function loadSettings() {
   ].map(([label, value]) => `<div class="item"><b>${esc(label)}</b>${esc(value)}</div>`).join("");
 }
 $("set-save").addEventListener("click", async () => {
+  const icp = window.SearchForm ? SearchForm.icpPayload() : {};
   await api("/api/settings", {method: "PUT", body: {
     workspace_name: $("set-workspace").value, product_name: $("set-product").value,
     seller_name: $("set-seller").value, offering: $("set-offering").value, ideal_customer: $("set-customer").value,
     currency: $("set-currency").value, retention_days: Number($("set-retention").value),
+    ...icp,
   }});
   toast("Settings saved");
   loadSettings();
@@ -692,5 +691,6 @@ async function pollUnread() {
   } catch (error) { /* stay on the page if a poll fails */ }
 }
 setInterval(pollUnread, 8000);
+window.LeadPilot = { $, api, esc, can, toast };
 
 boot().then(pollUnread).catch((error) => { $("greeting").textContent = error.message; });

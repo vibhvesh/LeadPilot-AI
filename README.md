@@ -90,7 +90,9 @@ AI search has its own per-user quota (`ai_search` on the API keys page). Members
 
 ## AI search
 
-On **Search criteria**, type a request such as “hospitals in Gujarat that use walkie-talkies and might buy Boondock Echo” and choose **Run AI search**.
+On **Search criteria**, tap a ready-made preset or set the dropdowns (country, US state, opportunity, buyer, role, industry, company size, and posted window). The same filters sit on AI search and on the saved-search form. Presets are stored in the database, seeded with US staffing searches such as open RFPs and C2C contracts, and an Admin can add, edit, or delete them under **Workspace settings**. Keyword fields suggest phrases from those presets and from earlier searches. The business profile’s search defaults start at the United States and a recruitment-vendor profile.
+
+Choose **Run AI search** after the request is filled in.
 
 The planner (xAI, Gemini, or OpenAI) returns a target profile, locations, signals, and search queries. Those queries run on every configured search provider (Tavily and Brave when keys exist). The top pages are read, companies and contacts are extracted, and thin results trigger another round up to `AI_SEARCH_MAX_ROUNDS`. New rows are deduplicated, enriched, and scored, then saved as leads with source `ai-search`. The plan and source URLs stay on the search page. Without a model key or a search key, the page shows that error and saves no leads.
 
