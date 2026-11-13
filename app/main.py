@@ -114,6 +114,13 @@ def create_app() -> FastAPI:
             return RedirectResponse("/login", status_code=302)
         return FileResponse(WEB / "index.html")
 
+    @app.get("/leads")
+    def leads_page(request: Request):
+        """Deep link for a lead or a status column. The page reads ?id= and ?status=."""
+        if not _approved(request):
+            return RedirectResponse("/login", status_code=302)
+        return FileResponse(WEB / "index.html")
+
     @app.get("/login")
     def login_page(request: Request):
         if _approved(request):
