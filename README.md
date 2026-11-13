@@ -16,32 +16,33 @@ Create this DNS record:
 
 Allow inbound TCP ports **80 and 443** in the VPS/provider firewall. Caddy obtains and renews HTTPS certificates automatically and stores certificate state in the persistent Docker volume `caddy_data`.
 
-## First-time deployment
+## Fresh Ubuntu installation — one command
 
-1. Install Docker Engine with the Docker Compose plugin and Git on Ubuntu.
-2. Clone this repository to `/opt/leadpilot-ai`.
-3. Create `.env` from `.env.example` and set strong, unique secrets. Do not commit `.env`.
-4. Ensure the DNS record above resolves to the VPS and ports 80/443 are reachable.
-5. Run the installer:
+1. Install **Ubuntu 24.04 LTS** on a fresh VPS.
+2. Ensure the DNS A record above resolves to the VPS public IP.
+3. Allow inbound TCP ports **80 and 443** in the VPS/provider firewall.
+4. Log in as root and run:
 
 ```bash
-cd /opt/leadpilot-ai
-bash install.sh
+curl -fsSL https://raw.githubusercontent.com/vibhvesh/LeadPilot-AI/main/bootstrap.sh | bash
 ```
 
-The installer checks root privileges, Docker Compose, the local environment file, a clean Git working tree, DNS resolution and the app health endpoint. It then fast-forward pulls `main`, validates Compose, deploys the stack and checks HTTPS.
+The bootstrap script installs base packages and Docker Engine/Compose, clones the repository to `/opt/leadpilot-ai`, generates secure environment secrets, configures the app, PostgreSQL and Caddy, starts the containers, and checks the app health endpoint and HTTPS. It refuses to overwrite an existing `/opt/leadpilot-ai` directory. It does not configure Google OAuth or implement Google Workspace login.
 
 ## Update an existing installation
 
+After reviewing any local changes, run:
+
 ```bash
-cd /opt/leadpilot-ai && bash install.sh
+cd /opt/leadpilot-ai && git pull --ff-only origin main && bash install.sh
 ```
 
-The installer refuses to pull if it detects uncommitted local changes. Review or stash those changes before retrying. It does not delete the PostgreSQL or Caddy data volumes.
+The update installer requires an existing `.env`, checks DNS and app health, validates Compose, deploys the stack and checks HTTPS. It does not delete the PostgreSQL or Caddy data volumes.
 
 ## Useful checks
 
 ```bash
+cd /opt/leadpilot-ai
 docker compose ps
 docker compose logs --tail=100 proxy
 curl -i https://leads.canberravision.com/health
