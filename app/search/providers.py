@@ -165,6 +165,75 @@ def parse_brave_results(payload: dict) -> list[dict]:
     return [row for row in rows if row["company"]]
 
 
+def active_search_backends(db) -> list[str]:
+    """Every configured web-search backend. Mock stands in when no key is set."""
+    settings = get_settings()
+    requested = (settings.search_provider or "auto").strip().lower()
+    if requested == "mock":
+        return ["mock"]
+    if requested in {"tavily", "brave"}:
+        return [requested] if _key_for(db, settings, requested) else ["mock"]
+    found = [name for name in ("tavily", "brave") if _key_for(db, settings, name)]
+    return found or ["mock"]
+
+
+def search_query(db, query: str, limit: int = 5) -> list[dict]:
+    settings = get_settings()
+    hits = []
+    bounded = max(1, min(int(limit or 5), 8))
+    for name in active_search_backends(db):
+        if name == "tavily":
+            rows = tavily_search(_key_for(db, settings, "tavily") or "", query, bounded)
+        elif name == "brave":
+            rows = brave_search(_key_for(db, settings, "brave") or "", query, bounded)
+        else:
+            rows = mock_free_text(query, bounded)
+        for row in rows:
+            row["search_provider"] = name
+            row["query"] = query
+            hits.append(row)
+    return hits
+
+
+def mock_free_text(query: str, limit: int = 4) -> list[dict]:
+    import re
+
+    words = [part for part in re.split(r"[^A-Za-z0-9]+", query or "") if len(part) > 2]
+    topic = (words[0] if words else "Company").title()
+    slug = re.sub(r"[^a-z0-9]+", "-", (query or "search").lower()).strip("-")[:40] or "search"
+    lowered = (query or "").lower()
+    state = "Gujarat" if "gujarat" in lowered else ""
+    country = "India" if "india" in lowered or state else ""
+    city = "Ahmedabad" if state else ""
+    people = ["Aarav Mehta", "Priya Shah", "Neha Kapoor", "Vikram Desai"]
+    suffixes = ["Hospital", "Systems", "Works", "Group"]
+    rows = []
+    for index in range(min(limit, 4)):
+        company = f"{topic} {suffixes[index]} {index + 1}"
+        rows.append(
+            {
+                "company": company,
+                "contact_name": people[index],
+                "email": f"contact{index}@{slug}.example",
+                "phone": f"+91-79-5555-01{index:02d}",
+                "website": f"https://{slug}-{index}.example",
+                "source": "mock-search",
+                "source_url": f"https://{slug}-{index}.example/about",
+                "snippet": f"{company} is mentioned for {query}. Email contact{index}@{slug}.example.",
+                "industry": topic,
+                "keywords": query[:180],
+                "company_size": "51–200",
+                "country": country,
+                "state": state,
+                "district": city,
+                "city": city,
+                "postal_code": "380001" if city else "",
+                "estimated_value": 150000 + index * 20000,
+            }
+        )
+    return rows
+
+
 def _from_web_result(title: str, url: str, text: str, source: str) -> dict:
     combined = f"{title}\n{text}"
     return {

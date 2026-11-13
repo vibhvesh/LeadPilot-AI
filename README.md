@@ -12,6 +12,8 @@ GitHub Pages cannot run this service. The FastAPI app serves both the API and th
 | `app/users` | Approval, Admin / Member roles, per-module view and manage permissions. |
 | `app/leads` | Lead records and the human review step that sets **Qualified**. |
 | `app/search` | Saved target profiles, web search, normalization, deduplication. |
+| `app/ai_search` | Natural-language search: plan, query, read pages, extract, then save leads. |
+| `app/bot` | Grok Bot API tokens, deep-search requests, and the outbound webhook. |
 | `app/agents` | Orchestrator, research, enrichment, qualification, outreach draft, quality. |
 | `app/providers` | Encrypted provider keys, role quotas, xAI / Gemini / OpenAI clients. |
 | `app/audit` | Sign-ins, searches, model calls, and permission changes. |
@@ -75,11 +77,121 @@ Set any of these in the environment, or paste them in **API keys** (admins only)
 | `OPENAI_API_KEY` | OpenAI. Default model `OPENAI_MODEL`. |
 | `TAVILY_API_KEY` | Tavily web search. |
 | `BRAVE_API_KEY` | Brave web search. |
+| `AI_SEARCH_MAX_ROUNDS` | How many times AI search rewrites its queries when results are thin. Default `2`. |
+| `GROKBOT_WEBHOOK_URL` | Optional URL that receives a deep-search request. |
+| `GROKBOT_WEBHOOK_SECRET` | Optional secret sent as `X-LeadPilot-Webhook-Secret`. |
 | `SEARCH_API_KEY` | Used as the Tavily key when `SEARCH_PROVIDER` is `auto` or `tavily`, or as the Brave key when `SEARCH_PROVIDER` is `brave`. |
 
 Environment values win over a key saved in the database. On **AI / LLM**, leave the provider on **Auto** to pick the first real key, or pin xAI, Gemini, or OpenAI. Quotas for each provider and role are edited under **API keys**. A pipeline completion and a search each count as one use.
 
 Web search results often have a company and a URL but no email or phone. Those fields are filled only when they are present in the result. The demo source includes sample contact details so the flow can be tried immediately.
+
+AI search has its own per-user quota (`ai_search` on the API keys page). Members start at 10 runs a day and 100 a month. Each run is written to the activity log.
+
+## AI search
+
+On **Search criteria**, type a request such as “hospitals in Gujarat that use walkie-talkies and might buy Boondock Echo” and choose **Run AI search**.
+
+The planner (xAI, Gemini, or OpenAI, or the demo model when no key is set) returns a target profile, locations, signals, and 3–8 queries. Those queries run on every configured search provider (Tavily and Brave when keys exist, otherwise the demo source). The top pages are read, companies and contacts are extracted, and thin results trigger another round up to `AI_SEARCH_MAX_ROUNDS`. New rows are deduplicated, enriched, and scored, then saved as leads with source `ai-search`. The plan and source URLs stay on the search page.
+
+**Deep search with Grok Bot** uses the same text, stores a `pending` request, and POSTs this JSON to `GROKBOT_WEBHOOK_URL` when that variable is set:
+
+```json
+{
+  "request_id": 1,
+  "text": "hospitals in Gujarat that might buy Boondock Echo",
+  "plan": {"profile": "...", "locations": [], "signals": [], "queries": []},
+  "callback_base_url": "https://YOUR-HOST"
+}
+```
+
+If `GROKBOT_WEBHOOK_SECRET` is set, it is sent as the header `X-LeadPilot-Webhook-Secret`. The request is still saved when the webhook is missing or the call fails.
+
+## Grok Bot API
+
+An admin creates a token under **Settings → Grok Bot tokens**. The raw token is shown once and only its hash is stored. Send it as `Authorization: Bearer lpb_...`.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/bot/requests?status=pending` | List requests. `status` is `pending`, `claimed`, `completed`, or `all`. |
+| `POST` | `/api/bot/requests/{id}/claim` | Mark a pending request claimed. |
+| `POST` | `/api/bot/requests/{id}/complete` | Body `{"notes": "..."}`. Marks the request completed. |
+| `POST` | `/api/bot/leads` | Bulk-create leads for a request. |
+
+Lead body:
+
+```json
+{
+  "request_id": 1,
+  "leads": [
+    {
+      "company": "Echo Buyer Hospital",
+      "contact_name": "Meera Shah",
+      "email": "meera@echobuyer.example",
+      "phone": "+91-79-5555-0199",
+      "website": "https://echobuyer.example",
+      "city": "Ahmedabad",
+      "state": "Gujarat",
+      "country": "India",
+      "industry": "healthcare",
+      "why_fit": "Uses handheld radios.",
+      "source_url": "https://echobuyer.example/about"
+    }
+  ]
+}
+```
+
+`company` is required. The server forces `source` to `grokbot`, links `deep_search_request_id`, skips duplicates, and scores the new leads. At most 50 leads per call. The search page shows how many leads came from the app and how many came from Grok Bot.
+
+## Talk to Bots
+
+A bot with an API token can ask to chat. `POST /api/bot/connect` creates a pending connection:
+
+```json
+{
+  "name": "Grok Bot",
+  "description": "Finds and explains leads",
+  "avatar_url": "https://example.com/avatar.png",
+  "webhook_url": "https://bot.example/talk",
+  "user_email": "person@company.com"
+}
+```
+
+`avatar_url`, `webhook_url`, and `user_email` are optional. `user_email` addresses one approved user, who can approve, block, or revoke that request. Without it, only an Admin or Super Admin can decide. Approve, block, and revoke are written to the activity log.
+
+The **Bots** page lists pending, approved, and blocked bots and polls unread counts. An approved bot has one thread.
+
+| Method | Path | Who | Purpose |
+|---|---|---|---|
+| `POST` | `/api/bot/connect` | Bot token | Register or update the connection. |
+| `GET` | `/api/bot/messages?since=` | Bot token | Messages newer than an id or ISO time. `403` until approved. |
+| `POST` | `/api/bot/messages` | Bot token | Send `{text, cards}`. `403` until approved. |
+| `GET` | `/api/bots` | Signed-in user | Connections that person can see. |
+| `GET` | `/api/bots/unread` | Signed-in user | `{unread: N}` for the nav badge. |
+| `POST` | `/api/bots/{id}/decision` | Signed-in user | `{"decision": "approve"\|"block"\|"revoke"}`. |
+| `GET` | `/api/bots/{id}/messages` | Signed-in user | Thread. Marks bot messages read. |
+| `POST` | `/api/bots/{id}/messages` | Signed-in user | `{"text": "hello"}`. |
+
+A bot reply can include cards. A lead card looks like this:
+
+```json
+{
+  "text": "Three hospitals worth a look",
+  "cards": [
+    {
+      "type": "leads",
+      "title": "Suggested leads",
+      "leads": [
+        {"company": "City Hospital", "email": "desk@city.example", "city": "Ahmedabad", "state": "Gujarat", "country": "India"}
+      ]
+    }
+  ]
+}
+```
+
+The chat shows **Add to pipeline** on each lead. That calls the normal lead create API. If the bot registered `webhook_url`, each user message is also POSTed there as `{connection_id, message_id, text, sender, callback_base_url}`. `GROKBOT_WEBHOOK_SECRET`, when set, is sent as `X-LeadPilot-Webhook-Secret`. A failed webhook does not block the chat message.
+
+Agent prompts and the outreach draft use **Settings → Business profile** (company name, what you sell, ideal customer). Until that is changed, the text stays the LinkTMS staffing pitch.
 
 ## Deploy on Render
 

@@ -1,6 +1,6 @@
 const TAB_MODULE = {
   overview: "dashboard", leads: "leads", pipeline: "pipeline", followups: "followups",
-  team: "team", reports: "reports", grokbot: "grokbot", users: "users", search: "search",
+  team: "team", reports: "reports", grokbot: "grokbot", bots: "dashboard", users: "users", search: "search",
   apis: "apikeys", ai: "ai", geo: "geo", activity: "activity", updates: "comments", settings: "settings",
 };
 const ROLE_LABEL = {super_admin: "Super Admin", admin: "Admin", member: "Member"};
@@ -95,6 +95,7 @@ const loaders = {
   team: loadTeam,
   reports: loadReports,
   grokbot: loadGrok,
+  bots: loadBots,
   users: loadUsers,
   search: loadSearch,
   apis: loadApis,
@@ -392,7 +393,41 @@ async function loadSearch() {
     await api("/api/search/criteria/" + button.dataset.del, {method: "DELETE"});
     loadSearch();
   }));
+  await loadAiSearch();
 }
+function renderPlan(plan) {
+  if (!plan) return "";
+  const queries = (plan.queries || []).map((query) => `<div class="item">${esc(query)}</div>`).join("");
+  return `<div class="item"><b>Profile</b>${esc(plan.profile || "")}</div>
+    <div class="item"><b>Locations</b>${esc((plan.locations || []).join(", ") || "—")}</div>
+    <div class="item"><b>Signals</b>${esc((plan.signals || []).join(", ") || "—")}</div>
+    <div class="list">${queries}</div>`;
+}
+async function loadAiSearch() {
+  const [ai, deep] = await Promise.all([api("/api/search/ai"), api("/api/search/deep")]);
+  const counts = ai.sources || {};
+  $("source-counts").textContent = `Leads from the app: ${counts.app || 0} · Leads from Grok Bot: ${counts.grokbot || 0}`;
+  const latest = (ai.runs || [])[0];
+  if (latest) {
+    const sources = (latest.sources || []).slice(0, 6).map((source) => `<div class="item"><b>${esc(source.title || source.provider)}</b><div class="muted">${esc(source.provider)} · ${esc(source.url || "")}</div></div>`).join("");
+    $("ai-output").innerHTML = `<div class="note">Round ${latest.rounds}. Saved ${latest.created_count} lead${latest.created_count === 1 ? "" : "s"} and skipped ${latest.duplicate_count} duplicate${latest.duplicate_count === 1 ? "" : "s"}. Provider ${esc((latest.providers || []).join(", ") || "demo")}.</div>${renderPlan(latest.plan)}${sources}`;
+  }
+  $("deep-list").innerHTML = (deep || []).map((row) => `<div class="item"><b>${esc(row.status)}</b> ${esc(row.text)}<div class="muted">${row.lead_count} Grok Bot lead${row.lead_count === 1 ? "" : "s"} · webhook ${esc(row.webhook_status)}</div></div>`).join("") || "";
+}
+$("ai-run").addEventListener("click", async () => {
+  try {
+    const result = await api("/api/search/ai", {method: "POST", body: {text: $("ai-text").value}});
+    toast(`Saved ${result.created_count} leads`);
+    loadSearch();
+  } catch (error) { toast(error.message); }
+});
+$("ai-deep").addEventListener("click", async () => {
+  try {
+    const result = await api("/api/search/deep", {method: "POST", body: {text: $("ai-text").value}});
+    toast(result.webhook_status === "sent" ? "Grok Bot notified" : "Deep search queued");
+    loadSearch();
+  } catch (error) { toast(error.message); }
+});
 async function runSearch(id) {
   const result = await api("/api/search/criteria/" + id + "/run", {method: "POST"});
   $("s-result").innerHTML = `<div class="note">Provider <b>${esc(result.provider)}</b>. Saved ${result.created_count} new lead${result.created_count === 1 ? "" : "s"} and skipped ${result.duplicate_count} duplicate${result.duplicate_count === 1 ? "" : "s"}.</div>`;
@@ -505,6 +540,17 @@ async function loadSettings() {
   $("set-product").value = data.product_name;
   $("set-currency").value = data.currency;
   $("set-retention").value = data.retention_days;
+  $("set-seller").value = data.seller_name || "";
+  $("set-offering").value = data.offering || "";
+  $("set-customer").value = data.ideal_customer || "";
+  const tokens = await api("/api/settings/bot-tokens");
+  $("bot-tokens").innerHTML = tokens.map((token) => `<div class="item"><b>${esc(token.name)}</b> ${esc(token.hint)} · ${token.revoked ? "Revoked" : "Active"}
+    ${!token.revoked && can("settings", true) ? `<div><button class="btn small secondary" type="button" data-revoke="${token.id}">Revoke</button></div>` : ""}</div>`).join("") || `<div class="muted">No bot tokens yet.</div>`;
+  $("bot-tokens").querySelectorAll("[data-revoke]").forEach((button) => button.addEventListener("click", async () => {
+    await api("/api/settings/bot-tokens/" + button.dataset.revoke, {method: "DELETE"});
+    toast("Token revoked");
+    loadSettings();
+  }));
   $("set-info").innerHTML = [
     ["Workspace", data.workspace_name], ["Product", data.product_name], ["Authentication", data.authentication],
     ["Database", data.database], ["Demo mode", data.demo_mode ? "On" : "Off"], ["Super Admin", data.super_admin],
@@ -513,10 +559,94 @@ async function loadSettings() {
 $("set-save").addEventListener("click", async () => {
   await api("/api/settings", {method: "PUT", body: {
     workspace_name: $("set-workspace").value, product_name: $("set-product").value,
+    seller_name: $("set-seller").value, offering: $("set-offering").value, ideal_customer: $("set-customer").value,
     currency: $("set-currency").value, retention_days: Number($("set-retention").value),
   }});
   toast("Settings saved");
   loadSettings();
 });
 
-boot().catch((error) => { $("greeting").textContent = error.message; });
+$("bot-create").addEventListener("click", async () => {
+  try {
+    const created = await api("/api/settings/bot-tokens", {method: "POST", body: {name: $("bot-name").value}});
+    const box = $("bot-once");
+    box.hidden = false;
+    box.textContent = "Copy this token now. It will not be shown again: " + created.token;
+    $("bot-name").value = "";
+    loadSettings();
+  } catch (error) { toast(error.message); }
+});
+
+const talk = {connectionId: null, name: "", approved: false, refreshing: false};
+async function loadBots() {
+  const rows = await api("/api/bots");
+  talk.rows = rows;
+  $("bot-connections").innerHTML = rows.length ? rows.map((row) => `<div class="item"><b>${esc(row.name)}</b> ${pill(row.status)}
+    <div class="muted">${esc(row.description || "No description")}${row.user_email ? " · " + esc(row.user_email) : ""}${row.unread ? " · " + row.unread + " unread" : ""}</div>
+    <div class="row">
+      <button class="btn small secondary" type="button" data-open-bot="${row.id}">Open</button>
+      ${row.can_decide && row.status !== "approved" && row.status !== "revoked" ? `<button class="btn small" type="button" data-bot-decision="${row.id}" data-choice="approve">Approve</button>` : ""}
+      ${row.can_decide && row.status !== "blocked" && row.status !== "revoked" ? `<button class="btn small secondary" type="button" data-bot-decision="${row.id}" data-choice="block">Block</button>` : ""}
+      ${row.can_decide && row.status !== "revoked" ? `<button class="btn small danger" type="button" data-bot-decision="${row.id}" data-choice="revoke">Revoke</button>` : ""}
+    </div></div>`).join("") : `<div class="muted">No bots have asked to talk yet.</div>`;
+  $("bot-connections").querySelectorAll("[data-open-bot]").forEach((button) => button.addEventListener("click", () => openBot(Number(button.dataset.openBot))));
+  $("bot-connections").querySelectorAll("[data-bot-decision]").forEach((button) => button.addEventListener("click", async () => {
+    await api("/api/bots/" + button.dataset.botDecision + "/decision", {method: "POST", body: {decision: button.dataset.choice}});
+    toast("Updated");
+    loadBots();
+  }));
+  if (talk.connectionId) openBot(talk.connectionId);
+}
+async function openBot(id) {
+  talk.connectionId = id;
+  const row = (talk.rows || []).find((item) => item.id === id);
+  if (row) { talk.name = row.name; talk.approved = row.status === "approved"; }
+  $("chat-title").textContent = talk.name || "Chat";
+  $("chat-compose").hidden = !talk.approved;
+  const messages = await api("/api/bots/" + id + "/messages");
+  $("chat-log").innerHTML = messages.map(renderChatMessage).join("") || `<div class="muted">No messages yet.</div>`;
+  $("chat-log").querySelectorAll("[data-add-lead]").forEach((button) => button.addEventListener("click", () => addCardLead(button)));
+}
+function renderChatMessage(message) {
+  const cards = (message.cards || []).map((card) => {
+    if (card.type === "leads") {
+      const leads = (card.leads || []).map((lead, index) => `<div class="item"><b>${esc(lead.company)}</b><div class="muted">${esc(lead.email || lead.city || "")}</div>${can("leads", true) ? `<button class="btn small" type="button" data-add-lead="${index}" data-lead='${esc(JSON.stringify(lead))}'>Add to pipeline</button>` : ""}</div>`).join("");
+      return `<div class="note"><b>${esc(card.title || "Leads")}</b>${leads}</div>`;
+    }
+    return card.body ? `<div class="note">${esc(card.body)}</div>` : "";
+  }).join("");
+  return `<div class="item"><b>${message.sender === "bot" ? "Bot" : "You"}</b>${esc(message.text || "")}${cards}</div>`;
+}
+async function addCardLead(button) {
+  const lead = JSON.parse(button.dataset.lead);
+  lead.source = lead.source || "bot-chat";
+  try {
+    await api("/api/leads", {method: "POST", body: lead});
+    toast("Added " + lead.company);
+  } catch (error) { toast(error.message); }
+}
+$("chat-send").addEventListener("click", async () => {
+  if (!talk.connectionId) return;
+  try {
+    await api("/api/bots/" + talk.connectionId + "/messages", {method: "POST", body: {text: $("chat-text").value}});
+    $("chat-text").value = "";
+    openBot(talk.connectionId);
+  } catch (error) { toast(error.message); }
+});
+async function pollUnread() {
+  try {
+    const data = await api("/api/bots/unread");
+    const badge = $("bots-badge");
+    if (!badge) return;
+    if (data.unread) { badge.hidden = false; badge.textContent = data.unread; }
+    else badge.hidden = true;
+    const page = document.getElementById("bots");
+    if (talk.connectionId && page && page.classList.contains("active") && !talk.refreshing) {
+      talk.refreshing = true;
+      try { await openBot(talk.connectionId); } finally { talk.refreshing = false; }
+    }
+  } catch (error) { /* stay on the page if a poll fails */ }
+}
+setInterval(pollUnread, 8000);
+
+boot().then(pollUnread).catch((error) => { $("greeting").textContent = error.message; });

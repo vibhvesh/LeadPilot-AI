@@ -7,7 +7,7 @@ from app.core.config import Settings
 from app.core.permissions import DEFAULT_ROLE_PERMISSIONS, MODULE_KEYS
 from app.models import LLMConfig, ProviderAccess, RolePermission, User, WorkspaceSettings
 
-PROVIDERS = ("xai", "gemini", "openai", "search", "mock")
+PROVIDERS = ("xai", "gemini", "openai", "search", "mock", "ai_search")
 
 
 def seed(db: Session, settings: Settings) -> None:
@@ -64,6 +64,9 @@ def ensure_provider_access(db: Session) -> None:
     }
     for role, (daily, monthly) in quotas.items():
         for provider in PROVIDERS:
+            daily_quota, monthly_quota = daily, monthly
+            if provider == "ai_search" and role == "member":
+                daily_quota, monthly_quota = 10, 100
             row = db.scalar(
                 select(ProviderAccess).where(
                     ProviderAccess.provider == provider,
@@ -77,15 +80,24 @@ def ensure_provider_access(db: Session) -> None:
                         provider=provider,
                         role=role,
                         enabled=True,
-                        daily_quota=daily,
-                        monthly_quota=monthly,
+                        daily_quota=daily_quota,
+                        monthly_quota=monthly_quota,
                     )
                 )
 
 
 def ensure_workspace(db: Session) -> None:
     if db.get(WorkspaceSettings, 1) is None:
-        db.add(WorkspaceSettings(id=1, workspace_name="LinkTMS", product_name="CanberraAI LeadPilot"))
+        db.add(
+            WorkspaceSettings(
+                id=1,
+                workspace_name="LinkTMS",
+                product_name="CanberraAI LeadPilot",
+                seller_name="LinkTMS",
+                offering="We help companies staff critical roles without a long search cycle.",
+                ideal_customer="Growing companies that are hiring",
+            )
+        )
 
 
 def ensure_llm_config(db: Session) -> None:

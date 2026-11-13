@@ -95,7 +95,7 @@ def list_access(db: Session) -> list[dict]:
 
 def upsert_access(db: Session, payload: dict) -> dict:
     provider = (payload.get("provider") or "").strip().lower()
-    if provider not in {"xai", "gemini", "openai", "search", "mock", "tavily", "brave"}:
+    if provider not in {"xai", "gemini", "openai", "search", "mock", "tavily", "brave", "ai_search"}:
         from app.core.errors import AppError
 
         raise AppError("Unknown provider")

@@ -27,6 +27,9 @@ def _public(row: WorkspaceSettings) -> dict:
     return {
         "workspace_name": row.workspace_name,
         "product_name": row.product_name,
+        "seller_name": row.seller_name or "LinkTMS",
+        "offering": row.offering or "We help companies staff critical roles without a long search cycle.",
+        "ideal_customer": row.ideal_customer or "Growing companies that are hiring",
         "currency": row.currency,
         "retention_days": row.retention_days,
         "country": row.country or "",
@@ -54,6 +57,12 @@ def put_workspace(body: dict, db: Session = Depends(get_db), actor=Depends(requi
         row.workspace_name = str(body["workspace_name"]).strip()[:120]
     if body.get("product_name"):
         row.product_name = str(body["product_name"]).strip()[:120]
+    if "seller_name" in body:
+        row.seller_name = str(body.get("seller_name") or "").strip()[:160]
+    if "offering" in body:
+        row.offering = str(body.get("offering") or "").strip()[:500]
+    if "ideal_customer" in body:
+        row.ideal_customer = str(body.get("ideal_customer") or "").strip()[:300]
     if body.get("currency"):
         row.currency = str(body["currency"]).strip()[:8]
     if body.get("retention_days") is not None:

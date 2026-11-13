@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Lead
 from app.search.normalize import extract_email, extract_phone
+from app.settings.profile import DEFAULT_OFFERING, DEFAULT_PRODUCT, DEFAULT_SELLER, profile_brief
 
 SYSTEM = (
     "You are a sales research assistant for CanberraAI LeadPilot. "
@@ -24,7 +25,7 @@ def orchestrate(lead: Lead) -> dict:
     }
 
 
-def research(lead: Lead, llm) -> dict:
+def research(lead: Lead, llm, profile: dict | None = None) -> dict:
     snippet = (lead.raw_payload or {}).get("snippet") or lead.notes or ""
     fallback = {
         "summary": snippet or f"{lead.company} is a {lead.industry or 'business'} organization in {lead.city or lead.country or 'the target region'}.",
@@ -34,7 +35,8 @@ def research(lead: Lead, llm) -> dict:
         purpose="company_research",
         system=SYSTEM,
         prompt=(
-            "Summarize this company for a recruiter. JSON keys: summary (string), signals (array of short strings).\n"
+            "Summarize this company for our sales team. JSON keys: summary (string), signals (array of short strings).\n"
+            f"{profile_brief(profile)}\n"
             f"Company: {lead.company}\nIndustry: {lead.industry}\nLocation: {lead.city}, {lead.state}, {lead.country}\n"
             f"Website: {lead.website}\nNotes: {snippet}"
         ),
@@ -103,8 +105,8 @@ def quality(db: Session, lead: Lead) -> dict:
     }
 
 
-def qualify(lead: Lead, llm, quality_step: dict) -> dict:
-    base = _heuristic_score(lead, quality_step["output"])
+def qualify(lead: Lead, llm, quality_step: dict, profile: dict | None = None) -> dict:
+    base = heuristic_score(lead, quality_step["output"])
     fallback = {
         "score": base,
         "fit": "high" if base >= 75 else "medium" if base >= 55 else "low",
@@ -115,7 +117,8 @@ def qualify(lead: Lead, llm, quality_step: dict) -> dict:
         purpose="lead_qualification",
         system=SYSTEM + " Do not mark the lead qualified. A person reviews that decision.",
         prompt=(
-            "Score this lead from 0 to 100 for a recruitment sales team. "
+            "Score this lead from 0 to 100 for the business described below. "
+            f"{profile_brief(profile)}\n"
             "JSON keys: score (integer), fit (low|medium|high), reasons (array of strings), recommend_qualify (boolean).\n"
             f"Company: {lead.company}\nContact: {lead.contact_name}\nEmail: {lead.email}\nPhone: {lead.phone}\n"
             f"Website: {lead.website}\nIndustry: {lead.industry}\nSize: {lead.company_size}\n"
@@ -152,17 +155,20 @@ def qualify(lead: Lead, llm, quality_step: dict) -> dict:
     }
 
 
-def outreach(lead: Lead, llm, qualification: dict) -> dict:
+def outreach(lead: Lead, llm, qualification: dict, profile: dict | None = None) -> dict:
     contact = lead.contact_name or "there"
+    seller = (profile or {}).get("seller_name") or DEFAULT_SELLER
+    product = (profile or {}).get("product_name") or DEFAULT_PRODUCT
+    offering = (profile or {}).get("offering") or DEFAULT_OFFERING
     fallback = {
-        "subject": f"Idea for {lead.company}'s hiring plans",
+        "subject": f"Idea for {lead.company}",
         "body": (
             f"Hello {contact},\n\n"
             f"I came across {lead.company} while looking at {lead.industry or 'growing'} teams"
             f"{' in ' + lead.city if lead.city else ''}. "
-            "We help companies staff critical roles without a long search cycle.\n\n"
+            f"{offering}\n\n"
             "Would you be open to a short conversation next week?\n\n"
-            "— LinkTMS / CanberraAI LeadPilot\n\n"
+            f"— {seller} / {product}\n\n"
             "This is a draft. It has not been sent."
         ),
     }
@@ -170,8 +176,9 @@ def outreach(lead: Lead, llm, qualification: dict) -> dict:
         purpose="outreach_draft",
         system=SYSTEM + " Write a short outreach email draft. Do not send it.",
         prompt=(
-            "Write a concise outreach email draft. JSON keys: subject, body. "
+            "Write a concise outreach email draft for the seller below. JSON keys: subject, body. "
             "The body must say it is a draft and must not claim it was sent.\n"
+            f"{profile_brief(profile)}\n"
             f"Company: {lead.company}\nContact: {contact}\nIndustry: {lead.industry}\n"
             f"Score: {qualification['output'].get('score')}\nReasons: {qualification['output'].get('reasons')}"
         ),
@@ -191,7 +198,7 @@ def outreach(lead: Lead, llm, qualification: dict) -> dict:
     }
 
 
-def _heuristic_score(lead: Lead, quality: dict) -> int:
+def heuristic_score(lead: Lead, quality: dict) -> int:
     score = 35
     if lead.email:
         score += 15

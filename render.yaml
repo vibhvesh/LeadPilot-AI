@@ -58,3 +58,9 @@ services:
         sync: false
       - key: SEARCH_API_KEY
         sync: false
+      - key: AI_SEARCH_MAX_ROUNDS
+        value: "2"
+      - key: GROKBOT_WEBHOOK_URL
+        sync: false
+      - key: GROKBOT_WEBHOOK_SECRET
+        sync: false

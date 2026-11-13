@@ -42,7 +42,9 @@ def lead_dict(lead: Lead, owners: dict | None = None) -> dict:
         "score": lead.score,
         "estimated_value": lead.estimated_value or 0,
         "notes": lead.notes or "",
+        "why_fit": lead.why_fit or "",
         "qualification_summary": lead.qualification_summary or "",
+        "deep_search_request_id": lead.deep_search_request_id,
         "human_reviewed": bool(lead.human_reviewed),
         "reviewed_by": lead.reviewed_by,
         "owner_id": lead.owner_id,
@@ -206,3 +208,53 @@ def review_lead(db: Session, actor: User, lead_id: int, decision: str, note: str
     db.commit()
     db.refresh(lead)
     return lead_dict(lead, _owners(db, [lead]))
+
+
+def ingest_lead(db: Session, actor: User, data: dict, *, source: str, request_id: int | None = None) -> str:
+    """Deduplicate, enrich, and score one lead. The caller commits."""
+    company = str(data.get("company") or "").strip()
+    if len(company) < 2:
+        return "skipped"
+    website = str(data.get("website") or "").strip()
+    key = dedup_key(company, website)
+    if db.scalar(select(Lead.id).where(Lead.dedup_key == key)):
+        return "duplicate"
+    why = str(data.get("why_fit") or "").strip()
+    lead = Lead(
+        company=company[:250],
+        contact_name=str(data.get("contact_name") or "").strip()[:250],
+        email=str(data.get("email") or "").strip()[:320],
+        phone=str(data.get("phone") or "").strip()[:80],
+        website=website[:500],
+        source=(source or "manual")[:80],
+        source_url=str(data.get("source_url") or "").strip()[:1000],
+        country=str(data.get("country") or "").strip()[:80],
+        state=str(data.get("state") or "").strip()[:80],
+        district=str(data.get("district") or "").strip()[:80],
+        city=str(data.get("city") or "").strip()[:80],
+        postal_code=str(data.get("postal_code") or "").strip()[:20],
+        industry=str(data.get("industry") or "").strip()[:120],
+        company_size=str(data.get("company_size") or "").strip()[:40],
+        keywords=str(data.get("keywords") or "").strip()[:500],
+        status="New",
+        estimated_value=int(data.get("estimated_value") or 0),
+        notes=str(data.get("notes") or data.get("snippet") or "").strip(),
+        why_fit=why,
+        owner_id=getattr(actor, "id", None),
+        created_by=getattr(actor, "id", None),
+        dedup_key=key,
+        deep_search_request_id=request_id,
+        raw_payload={"snippet": str(data.get("snippet") or "")[:1000], "origin": source},
+    )
+    try:
+        with db.begin_nested():
+            db.add(lead)
+            db.flush()
+    except IntegrityError:
+        return "duplicate"
+    from app.agents.scoring import apply_score
+    from app.agents.steps import enrich
+
+    enrich(db, lead)
+    apply_score(db, actor, lead)
+    return "created"

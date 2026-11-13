@@ -8,20 +8,22 @@ from app.audit.service import record
 from app.core.errors import AppError
 from app.models import AgentRun, Lead
 from app.providers.llm import LLMClient
+from app.settings.profile import load_profile
 
 
 def run_pipeline(db: Session, actor, lead_id: int) -> dict:
     lead = db.get(Lead, lead_id)
     if lead is None:
         raise AppError("Lead not found", 404)
+    profile = load_profile(db)
     llm = LLMClient(db, actor)
-    steps = [orchestrate(lead), research(lead, llm)]
+    steps = [orchestrate(lead), research(lead, llm, profile)]
     steps.append(enrich(db, lead))
     quality_step = quality(db, lead)
     steps.append(quality_step)
-    qualification = qualify(lead, llm, quality_step)
+    qualification = qualify(lead, llm, quality_step, profile)
     steps.append(qualification)
-    draft = outreach(lead, llm, qualification)
+    draft = outreach(lead, llm, qualification, profile)
     steps.append(draft)
 
     score = qualification["output"]["score"]
