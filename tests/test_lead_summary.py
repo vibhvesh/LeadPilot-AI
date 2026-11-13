@@ -45,3 +45,13 @@ def test_lead_fields_and_summary_module_are_available(client):
     assert "mailto:" in script.text
     assert "tel:" in script.text
     assert "Not listed" in script.text
+    assert "overflow-wrap:anywhere" in client.get("/static/styles.css").text
+    assert "word-break:break-all" in client.get("/static/styles.css").text
+    preview = client.get("/static/lead-preview.js")
+    assert preview.status_code == 200
+    assert "Open full lead" in preview.text
+    assert 'event.key === "Escape"' in preview.text
+    assert "data-close" in preview.text
+    assert "gestureOpensPreview" in preview.text
+    assert 'data-preview-lead' in client.get("/static/pipeline-ui.js").text
+    assert "lead-preview.js" in page.text

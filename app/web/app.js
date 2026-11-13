@@ -119,7 +119,10 @@ async function boot() {
   if (route && can("leads")) {
     const status = route.status || "";
     if (status && [...$("lead-status").options].some((option) => option.value === status)) $("lead-status").value = status;
-    if (route.id && Number(route.id)) state.selectedLead = Number(route.id);
+    if (route.id && Number(route.id)) {
+      state.selectedLead = Number(route.id);
+      state.previewOnLoad = true;
+    }
     show("leads", {url: "/leads" + location.search});
   } else if (wanted && document.getElementById(wanted) && can(TAB_MODULE[wanted])) show(wanted);
   else if (first) show(first.dataset.tab);
@@ -153,14 +156,13 @@ async function loadOverview() {
   $("m-follow").textContent = data.followups_due + " follow-ups open · won / all leads";
   $("start-banner").hidden = data.total_leads > 0;
   $("recent-leads").innerHTML = data.recent_leads.length ? data.recent_leads.map((lead) =>
-    `<tr class="clicky" data-open-lead="${lead.id}"><td>${esc(lead.contact_name || "—")}</td><td>${esc(lead.company)}</td><td>${esc(lead.region || "—")}</td><td>${lead.score ?? "—"}</td><td>${pill(lead.status)}</td></tr>`
+    `<tr class="clicky" data-preview-lead="${lead.id}"><td>${esc(lead.contact_name || "—")}</td><td>${esc(lead.company)}</td><td>${esc(lead.region || "—")}</td><td>${lead.score ?? "—"}</td><td>${pill(lead.status)}</td></tr>`
   ).join("") : `<tr><td colspan="5">No leads yet.</td></tr>`;
   const admin = data.admin;
   $("admin-summary").innerHTML = admin ? `
     <div class="item"><b>Pending approval</b>${admin.pending} account${admin.pending === 1 ? "" : "s"}</div>
     <div class="item"><b>Approved people</b>${admin.approved}</div>
     <div class="item"><b>New user policy</b>${esc(admin.policy)}</div>` : `<div class="item"><b>Your role</b>${esc(ROLE_LABEL[state.me.role] || state.me.role)}</div>`;
-  $("recent-leads").querySelectorAll("[data-open-lead]").forEach((row) => row.addEventListener("click", () => { show("leads"); setTimeout(() => openLead(Number(row.dataset.openLead)), 50); }));
 }
 
 async function ensureLeads() {
@@ -180,15 +182,15 @@ async function loadLeads() {
   const query = params.toString();
   state.leads = await api("/api/leads" + (query ? "?" + query : ""));
   $("lead-rows").innerHTML = state.leads.length ? state.leads.map((lead) =>
-    `<tr class="clicky" data-lead="${lead.id}"><td>${esc(lead.company)}</td><td>${esc(lead.contact_name || "—")}<div class="muted">${esc(lead.email || "")}</div></td><td>${esc(lead.source)}</td><td>${esc(lead.region || "—")}</td><td>${lead.score ?? "—"}</td><td>${pill(lead.status)}</td></tr>`
+    `<tr class="clicky" data-preview-lead="${lead.id}"><td>${esc(lead.company)}</td><td>${esc(lead.contact_name || "—")}<div class="muted">${esc(lead.email || "")}</div></td><td>${esc(lead.source)}</td><td>${esc(lead.region || "—")}</td><td>${lead.score ?? "—"}</td><td>${pill(lead.status)}</td></tr>`
   ).join("") : `<tr><td colspan="6">No leads match. Run a search or add one.</td></tr>`;
-  $("lead-rows").querySelectorAll("[data-lead]").forEach((row) => row.addEventListener("click", () => openLead(Number(row.dataset.lead))));
-  if (state.selectedLead) openLead(state.selectedLead);
+  if (state.selectedLead) openLead(state.selectedLead, {preview: !!state.previewOnLoad});
+  state.previewOnLoad = false;
 }
 
 const LEAD_STATUSES = ["New", "Contacted", "Qualified", "Won", "Lost"];
 
-async function openLead(id) {
+async function openLead(id, opts = {}) {
   let lead = state.leads.find((item) => item.id === id);
   if (!lead) {
     try { lead = await api("/api/leads/" + id); }
@@ -196,7 +198,7 @@ async function openLead(id) {
   }
   state.selectedLead = id;
   const manage = can("leads", true);
-  const options = LEAD_STATUSES.map((status) => `<option value="${esc(status)}" ${lead.status === status ? "selected" : ""}>${esc(status)}</option>`).join("");
+  const statusOptions = LEAD_STATUSES.map((status) => `<option value="${esc(status)}" ${lead.status === status ? "selected" : ""}>${esc(status)}</option>`).join("");
   $("lead-detail").innerHTML = `${window.LeadSummary ? LeadSummary.render(lead) : ""}
     <div class="note"><b>${esc(lead.company)}</b> ${esc(lead.qualification_summary || "Not scored yet.")}</div>
     <div class="split3">
@@ -206,7 +208,7 @@ async function openLead(id) {
     </div>
     <div class="field"><label>Notes</label><textarea id="detail-notes">${esc(lead.notes || "")}</textarea></div>
     <div class="row">
-      ${manage ? `<div class="field" style="margin:0"><label for="detail-status">Move to column</label><select id="detail-status">${options}</select></div>
+      ${manage ? `<div class="field" style="margin:0"><label for="detail-status">Move to column</label><select id="detail-status">${statusOptions}</select></div>
       <button class="btn small" type="button" id="detail-move">Move</button>
       <button class="btn secondary small" type="button" id="detail-save">Save notes</button>` : ""}
       <button class="btn secondary small" type="button" id="detail-agent">Score in GrokBot</button>
@@ -238,6 +240,7 @@ async function openLead(id) {
       } catch (error) { toast(error.message); }
     };
   }
+  if (opts.preview && window.LeadPreview) LeadPreview.show(lead);
 }
 
 $("toggle-lead-form").addEventListener("click", () => { $("lead-form").hidden = !$("lead-form").hidden; });

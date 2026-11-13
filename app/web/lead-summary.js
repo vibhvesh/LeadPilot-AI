@@ -34,7 +34,7 @@
 
   function linkRow(label, href, value) {
     if (!text(value) || !href) return `<div class="summary-row"><span>${esc(label)}</span>${missing()}</div>`;
-    return `<div class="summary-row"><span>${esc(label)}</span><a href="${esc(href)}">${esc(value)}</a></div>`;
+    return `<div class="summary-row"><span>${esc(label)}</span><a class="summary-link" href="${esc(href)}">${esc(value)}</a></div>`;
   }
 
   function fact(label, value) {
