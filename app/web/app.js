@@ -52,12 +52,26 @@ function greeting(name) {
   const first = (name || "there").split(" ")[0];
   return `Good ${part}, ${first}`;
 }
-function show(tab) {
+function show(tab, options = {}) {
   document.querySelectorAll(".tab").forEach((button) => button.classList.toggle("active", button.dataset.tab === tab));
   document.querySelectorAll(".page").forEach((page) => page.classList.toggle("active", page.id === tab));
-  history.replaceState(null, "", "#" + tab);
+  history.replaceState(null, "", options.url || ("#" + tab));
   const loader = loaders[tab];
   if (loader) loader().catch((error) => toast(error.message));
+}
+
+function readLeadRoute() {
+  const path = location.pathname.replace(/\/+$/, "") || "/";
+  if (path === "/leads" || path.endsWith("/leads")) {
+    const params = new URLSearchParams(location.search);
+    return {id: params.get("id"), status: params.get("status")};
+  }
+  const hash = location.hash.replace(/^#/, "");
+  if (hash === "leads" || hash.startsWith("leads?")) {
+    const params = new URLSearchParams(hash.includes("?") ? hash.slice(hash.indexOf("?") + 1) : "");
+    return {id: params.get("id"), status: params.get("status")};
+  }
+  return null;
 }
 
 document.querySelectorAll(".tab").forEach((button) => button.addEventListener("click", () => show(button.dataset.tab)));
@@ -99,9 +113,15 @@ function applyAccess() {
 async function boot() {
   state.me = await api("/api/me");
   applyAccess();
-  const wanted = location.hash.slice(1);
+  const route = readLeadRoute();
+  const wanted = location.hash.slice(1).split("?")[0];
   const first = document.querySelector(".tab:not([hidden])");
-  if (wanted && document.getElementById(wanted) && can(TAB_MODULE[wanted])) show(wanted);
+  if (route && can("leads")) {
+    const status = route.status || "";
+    if (status && [...$("lead-status").options].some((option) => option.value === status)) $("lead-status").value = status;
+    if (route.id && Number(route.id)) state.selectedLead = Number(route.id);
+    show("leads", {url: "/leads" + location.search});
+  } else if (wanted && document.getElementById(wanted) && can(TAB_MODULE[wanted])) show(wanted);
   else if (first) show(first.dataset.tab);
 }
 
@@ -166,11 +186,17 @@ async function loadLeads() {
   if (state.selectedLead) openLead(state.selectedLead);
 }
 
-function openLead(id) {
-  const lead = state.leads.find((item) => item.id === id);
+const LEAD_STATUSES = ["New", "Contacted", "Qualified", "Won", "Lost"];
+
+async function openLead(id) {
+  let lead = state.leads.find((item) => item.id === id);
+  if (!lead) {
+    try { lead = await api("/api/leads/" + id); }
+    catch (error) { toast(error.message); return; }
+  }
   state.selectedLead = id;
-  if (!lead) return;
   const manage = can("leads", true);
+  const options = LEAD_STATUSES.map((status) => `<option value="${esc(status)}" ${lead.status === status ? "selected" : ""}>${esc(status)}</option>`).join("");
   $("lead-detail").innerHTML = `
     <div class="note"><b>${esc(lead.company)}</b> ${esc(lead.qualification_summary || "Not scored yet.")}</div>
     <div class="split3">
@@ -180,9 +206,9 @@ function openLead(id) {
     </div>
     <div class="field"><label>Notes</label><textarea id="detail-notes">${esc(lead.notes || "")}</textarea></div>
     <div class="row">
-      ${manage ? `<select id="detail-status"><option ${lead.status === "New" ? "selected" : ""}>New</option><option ${lead.status === "Contacted" ? "selected" : ""}>Contacted</option><option ${lead.status === "Won" ? "selected" : ""}>Won</option><option ${lead.status === "Lost" ? "selected" : ""}>Lost</option></select>
-      <button class="btn small" type="button" id="detail-save">Save</button>
-      <button class="btn small" type="button" id="detail-qualify">Mark qualified</button>` : ""}
+      ${manage ? `<div class="field" style="margin:0"><label for="detail-status">Move to column</label><select id="detail-status">${options}</select></div>
+      <button class="btn small" type="button" id="detail-move">Move</button>
+      <button class="btn secondary small" type="button" id="detail-save">Save notes</button>` : ""}
       <button class="btn secondary small" type="button" id="detail-agent">Score in GrokBot</button>
     </div>
     <div class="list" id="detail-comments" style="margin-top:12px"></div>`;
@@ -194,14 +220,22 @@ function openLead(id) {
   $("detail-agent").onclick = () => { $("agent-lead").dataset.prefer = String(id); show("grokbot"); };
   if (manage) {
     $("detail-save").onclick = async () => {
-      await api("/api/leads/" + id, {method: "PATCH", body: {notes: $("detail-notes").value, status: $("detail-status").value}});
-      toast("Lead saved");
-      loadLeads();
+      try {
+        await api("/api/leads/" + id, {method: "PATCH", body: {notes: $("detail-notes").value}});
+        toast("Notes saved");
+        loadLeads();
+      } catch (error) { toast(error.message); }
     };
-    $("detail-qualify").onclick = async () => {
-      await api("/api/leads/" + id + "/review", {method: "POST", body: {decision: "qualify"}});
-      toast("Marked qualified");
-      loadLeads();
+    $("detail-move").onclick = async () => {
+      const status = $("detail-status").value;
+      try {
+        if (status === "Qualified") await api("/api/leads/" + id + "/review", {method: "POST", body: {decision: "qualify"}});
+        else await api("/api/leads/" + id, {method: "PATCH", body: {status}});
+        toast("Moved to " + status);
+        if ($("lead-status") && $("lead-status").value && $("lead-status").value !== status) $("lead-status").value = status;
+        history.replaceState(null, "", "/leads?id=" + id);
+        loadLeads();
+      } catch (error) { toast(error.message); }
     };
   }
 }
@@ -224,12 +258,7 @@ $("save-lead").addEventListener("click", async () => {
 
 async function loadPipeline() {
   const data = await api("/api/pipeline");
-  const max = Math.max(1, ...Object.values(data.counts));
-  $("pipeline-board").innerHTML = ["New", "Contacted", "Qualified", "Won", "Lost"].map((status) => `
-    <div class="col"><h3>${esc(status)} <span>${data.counts[status] || 0}</span></h3>
-      <div class="bar"><i style="width:${Math.round(((data.counts[status] || 0) / max) * 100)}%"></i></div>
-      ${(data.columns[status] || []).map((lead) => `<div class="mini"><b>${esc(lead.company)}</b><div class="muted">${esc(lead.region || lead.contact_name || "")}</div></div>`).join("") || `<div class="muted">None</div>`}
-    </div>`).join("");
+  $("pipeline-board").innerHTML = window.PipelineBoard.render(data);
 }
 
 async function loadFollowups() {
