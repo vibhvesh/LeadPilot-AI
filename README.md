@@ -50,10 +50,14 @@ curl -i https://leads.canberravision.com/health
 
 ## Google sign-in setup
 
-The application requires Google sign-in for all browser pages and application API routes. The technical `/health` endpoint remains public for deployment health checks. The only permitted identities are:
+The application requires Google sign-in for all browser pages and application API routes. The technical `/health` endpoint remains public for deployment health checks.
 
-- `vibhvesh@gmail.com` — Super Admin; full access to the existing admin API.
-- Verified Google Workspace users in `linktms.com` — standard member access.
+- `vibhvesh@gmail.com` is the only Super Admin and has full administrative access.
+- Any Google account with a Google-verified email may submit an access request.
+- New users are not automatically admitted. Their request is stored as **pending**.
+- The Super Admin sees pending requests in the dashboard and can approve or reject each account.
+- Approved accounts can sign in and access the member dashboard. Rejected accounts are denied.
+- Only the Super Admin can access administrative APIs and approve/reject requests.
 
 Create a Google OAuth client in Google Cloud Console:
 
@@ -63,7 +67,7 @@ Create a Google OAuth client in Google Cloud Console:
 4. Copy the Client ID and Client Secret into `/opt/leadpilot-ai/.env` on the VPS as `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
 5. Restart the application: `cd /opt/leadpilot-ai && docker compose up -d --build`.
 
-Do not commit the client secret to GitHub. The app uses Google OpenID Connect with `openid email profile`, checks Google's verified email and Workspace hosted-domain claim, and stores hashed opaque application session tokens server-side. Sessions expire after the configured session lifetime; signing out revokes the session.
+Do not commit the client secret to GitHub. The app uses Google OpenID Connect with `openid email profile`, requires Google's verified email claim, and stores hashed opaque application session tokens server-side. Workspace domain is not used for automatic approval. Sessions expire after the configured session lifetime; signing out revokes the session.
 
 After a successful deployment, visit `https://leads.canberravision.com`; it redirects to Google sign-in. The callback URI must match exactly.
 
