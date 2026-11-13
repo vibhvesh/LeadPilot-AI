@@ -6,7 +6,10 @@ from app.models import WorkspaceSettings
 
 DEFAULT_SELLER = "LinkTMS"
 DEFAULT_OFFERING = "We help companies staff critical roles without a long search cycle."
-DEFAULT_CUSTOMER = "Growing companies that are hiring"
+DEFAULT_CUSTOMER = (
+    "US companies hiring for US-based roles that want to hire, or are open to, "
+    "recruitment vendors and staffing agencies."
+)
 DEFAULT_PRODUCT = "CanberraAI LeadPilot"
 
 

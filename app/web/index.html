@@ -151,11 +151,15 @@
   </section>
 
   <section id="search" class="page">
-    <div class="heading"><div><h1>Search criteria</h1><div class="muted">Describe who you want in plain language, or use a structured profile.</div></div></div>
+    <div class="heading"><div><h1>Search criteria</h1><div class="muted">Pick a preset or set the dropdowns. Both AI search and saved search use the same filters.</div></div></div>
     <p class="error" id="search-provider-status" hidden></p>
     <div class="card" style="margin-bottom:14px">
       <h2>AI search</h2>
-      <div class="field"><label>Request</label><textarea id="ai-text" placeholder="Hospitals in Gujarat that use walkie-talkies and might buy Boondock Echo"></textarea></div>
+      <p class="muted">Tap a preset to fill the request and the filters.</p>
+      <div id="ai-preset-chips" class="chips"></div>
+      <div id="ai-criteria-fields"></div>
+      <div class="field"><label>Request</label><textarea id="ai-text" placeholder="Open US staffing RFPs for temporary personnel"></textarea></div>
+      <p class="muted" id="ai-query-preview"></p>
       <div class="row">
         <button class="btn" type="button" id="ai-run" data-manage="search">Run AI search</button>
         <button class="btn secondary" type="button" id="ai-deep" data-manage="search">Deep search with Grok Bot</button>
@@ -166,19 +170,13 @@
     </div>
     <div class="grid2">
       <div class="card">
-        <h2>Target profile</h2>
-        <div class="field"><label>Saved search name</label><input id="s-name" placeholder="Gujarat technology companies"></div>
-        <div class="field"><label>Industry</label><input id="s-industry" placeholder="Technology, logistics, healthcare"></div>
-        <div class="field"><label>Keywords</label><input id="s-keywords" placeholder="hiring, software, warehouse"></div>
-        <div class="field"><label>Company size</label><select id="s-size"><option>Any size</option><option>1–50</option><option>51–200</option><option>201–1,000</option><option>1,000+</option></select></div>
-        <div class="split3">
-          <div class="field"><label>Country</label><input id="s-country" placeholder="India"></div>
-          <div class="field"><label>State</label><input id="s-state" placeholder="Gujarat"></div>
-          <div class="field"><label>District</label><input id="s-district"></div>
-          <div class="field"><label>City</label><input id="s-city"></div>
-          <div class="field"><label>PIN / ZIP</label><input id="s-postal"></div>
-          <div class="field"><label>Results limit</label><input id="s-limit" type="number" value="10" min="1" max="25"></div>
-        </div>
+        <h2>Saved search</h2>
+        <p class="muted">Tap a preset to fill this form.</p>
+        <div id="saved-preset-chips" class="chips"></div>
+        <div class="field"><label>Saved search name</label><input id="s-name" placeholder="Open US staffing RFPs"></div>
+        <div id="saved-criteria-fields"></div>
+        <div class="field"><label>Results limit</label><input id="s-limit" type="number" value="10" min="1" max="25"></div>
+        <p class="muted" id="saved-query-preview"></p>
         <button class="btn" type="button" id="s-save" data-manage="search">Save and run search</button>
         <div class="error" id="s-error"></div>
         <div id="s-result"></div>
@@ -301,6 +299,9 @@
         <div class="field"><label>Company name</label><input id="set-seller" placeholder="LinkTMS"></div>
         <div class="field"><label>What we sell</label><textarea id="set-offering"></textarea></div>
         <div class="field"><label>Ideal customer</label><input id="set-customer"></div>
+        <h2>Search defaults</h2>
+        <p class="muted">These pre-fill Search criteria for a US recruitment-vendor search. They are filters, not sample leads.</p>
+        <div id="icp-fields"></div>
         <button class="btn" type="button" id="set-save" data-manage="settings">Save settings</button>
       </div>
       <div class="card">
@@ -314,10 +315,16 @@
         <div class="list" id="set-info"></div>
       </div>
     </div>
+    <div class="card" style="margin-top:14px" id="preset-admin">
+      <h2>Search presets</h2>
+      <p class="muted">Admins can add, edit, or delete the chips shown on Search criteria.</p>
+      <div id="preset-editor"></div>
+    </div>
   </section>
   <div class="foot">CanberraAI LeadPilot · LinkTMS · TMS-LEAD</div>
 </main>
 <div class="toast" id="toast" hidden></div>
 <script src="/static/app.js"></script>
+<script src="/static/search-ui.js"></script>
 </body>
 </html>

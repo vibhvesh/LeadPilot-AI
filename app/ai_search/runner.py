@@ -11,20 +11,25 @@ from app.core.errors import AppError
 from app.leads.service import ingest_lead
 from app.models import AiSearchRun, Lead
 from app.providers.access import consume
+from app.search.presets import merge_query_templates
 from app.search.providers import active_search_backends, search_query
 from app.settings.profile import load_profile
 
 THIN_RESULT_COUNT = 3
 
 
-def run_ai_search(db: Session, actor, text: str, rounds: int | None = None) -> dict:
+def run_ai_search(db: Session, actor, text: str, rounds: int | None = None, criteria: dict | None = None) -> dict:
     request = (text or "").strip()
     if len(request) < 3:
         raise AppError("Describe who you want to find")
+    if criteria is not None:
+        from app.search.presets import clean_criteria
+
+        criteria = clean_criteria(criteria)
     limit = max(1, min(int(rounds or get_settings().ai_search_max_rounds or 2), 4))
     consume(db, actor, "ai_search", 1)
     profile = load_profile(db)
-    plan = make_plan(db, actor, request, profile)
+    plan = merge_query_templates(make_plan(db, actor, request, profile, criteria), criteria)
     collected = []
     sources = []
     providers = []
@@ -34,8 +39,8 @@ def run_ai_search(db: Session, actor, text: str, rounds: int | None = None) -> d
         found = _search_round(db, actor, plan, collected, sources, providers)
         if len({item["company"].lower() for item in collected}) >= THIN_RESULT_COUNT or round_number == limit:
             break
-        plan = refine_plan(db, actor, request, plan, found)
-    created, duplicates = _save(db, actor, collected)
+        plan = merge_query_templates(refine_plan(db, actor, request, plan, found), criteria)
+    created, duplicates = _save(db, actor, collected, _minimum_score(criteria))
     run = AiSearchRun(
         user_id=actor.id,
         text=request,
@@ -108,13 +113,25 @@ def _search_round(db, actor, plan, collected, sources, providers) -> int:
     return len(collected) - before
 
 
-def _save(db, actor, companies) -> tuple[int, int]:
+def _save(db, actor, companies, min_score: int | None = None) -> tuple[int, int]:
     created = 0
     duplicates = 0
     for company in companies:
-        outcome = ingest_lead(db, actor, company, source="ai-search")
+        outcome = ingest_lead(db, actor, company, source="ai-search", min_score=min_score)
         if outcome == "created":
             created += 1
         elif outcome == "duplicate":
             duplicates += 1
     return created, duplicates
+
+
+def _minimum_score(criteria: dict | None) -> int | None:
+    if not criteria:
+        return None
+    raw = criteria.get("min_score")
+    if raw in (None, ""):
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None

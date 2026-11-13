@@ -9,6 +9,7 @@ from app.core.errors import AppError
 from app.models import Lead, SearchCriteria, SearchRun, User
 from app.providers.access import consume
 from app.search.normalize import dedup_key
+from app.search.presets import clean_criteria
 from app.search.providers import search_companies
 
 
@@ -26,6 +27,13 @@ def criteria_dict(row: SearchCriteria) -> dict:
         "postal_code": row.postal_code or "",
         "radius_km": row.radius_km,
         "results_limit": row.results_limit,
+        "states": list(row.states or []),
+        "opportunity_type": row.opportunity_type or "",
+        "buyer_type": row.buyer_type or "",
+        "role_category": row.role_category or "",
+        "posted_window": row.posted_window or "",
+        "min_score": row.min_score,
+        "query_templates": list(row.query_templates or []),
         "owner_id": row.owner_id,
         "created_at": row.created_at.isoformat() if row.created_at else None,
     }
@@ -40,17 +48,28 @@ def save_criteria(db: Session, actor: User, payload: dict) -> dict:
     name = (payload.get("name") or "").strip()
     if len(name) < 2:
         raise AppError("Give this search a name")
+    cleaned = clean_criteria(payload)
+    single_state = cleaned["states"][0] if len(cleaned["states"]) == 1 else (payload.get("state") or "").strip()
+    if len(cleaned["states"]) != 1:
+        single_state = ""
     row = SearchCriteria(
         name=name[:160],
         owner_id=actor.id,
-        industry=(payload.get("industry") or "").strip(),
-        keywords=(payload.get("keywords") or "").strip(),
-        company_size=(payload.get("company_size") or "").strip(),
-        country=(payload.get("country") or "").strip(),
-        state=(payload.get("state") or "").strip(),
-        district=(payload.get("district") or "").strip(),
-        city=(payload.get("city") or "").strip(),
-        postal_code=(payload.get("postal_code") or "").strip(),
+        industry=cleaned["industry"],
+        keywords=cleaned["keywords"],
+        company_size=cleaned["company_size"],
+        country=cleaned["country"],
+        state=single_state[:80],
+        states=cleaned["states"],
+        district=cleaned["district"],
+        city=cleaned["city"],
+        postal_code=cleaned["postal_code"],
+        opportunity_type=cleaned["opportunity_type"],
+        buyer_type=cleaned["buyer_type"],
+        role_category=cleaned["role_category"],
+        posted_window=cleaned["posted_window"],
+        min_score=cleaned["min_score"],
+        query_templates=cleaned["query_templates"],
         radius_km=payload.get("radius_km"),
         results_limit=_limit(payload.get("results_limit")),
     )

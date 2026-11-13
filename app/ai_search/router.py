@@ -13,7 +13,8 @@ router = APIRouter(prefix="/api/search")
 @router.post("/ai")
 def post_ai_search(body: dict, db: Session = Depends(get_db), actor=Depends(require_module("search", manage=True))):
     rounds = body.get("rounds")
-    return run_ai_search(db, actor, str(body.get("text") or ""), rounds=int(rounds) if rounds else None)
+    criteria = body.get("criteria") if isinstance(body.get("criteria"), dict) else None
+    return run_ai_search(db, actor, str(body.get("text") or ""), rounds=int(rounds) if rounds else None, criteria=criteria)
 
 
 @router.get("/ai")

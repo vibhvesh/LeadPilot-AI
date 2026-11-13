@@ -45,22 +45,9 @@ def search_companies(db, criteria) -> tuple[str, str, list[dict]]:
 
 
 def build_query(criteria) -> str:
-    parts = []
-    if criteria.keywords:
-        parts.append(criteria.keywords)
-    if criteria.industry:
-        parts.append(criteria.industry)
-    parts.append("companies")
-    location = ", ".join(
-        piece
-        for piece in (criteria.city, criteria.district, criteria.state, criteria.country, criteria.postal_code)
-        if piece
-    )
-    if location:
-        parts.append("in " + location)
-    if criteria.company_size and criteria.company_size != "Any size":
-        parts.append(criteria.company_size + " employees")
-    return " ".join(parts)
+    from app.search.presets import compose_query
+
+    return compose_query(criteria)
 
 
 def _search_backend(provider: str, key: str, query: str, limit: int) -> list[dict]:

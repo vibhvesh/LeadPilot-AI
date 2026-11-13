@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings
 from app.core.permissions import DEFAULT_ROLE_PERMISSIONS, MODULE_KEYS
 from app.models import LLMConfig, ProviderAccess, RolePermission, User, WorkspaceSettings
+from app.search.presets import IDEAL_CUSTOMER, apply_icp_defaults, seed_presets
 
 PROVIDERS = ("xai", "gemini", "openai", "search", "ai_search")
 
@@ -16,6 +17,7 @@ def seed(db: Session, settings: Settings) -> None:
     ensure_provider_access(db)
     ensure_workspace(db)
     ensure_llm_config(db)
+    seed_presets(db)
     db.commit()
 
 
@@ -88,17 +90,19 @@ def ensure_provider_access(db: Session) -> None:
 
 
 def ensure_workspace(db: Session) -> None:
-    if db.get(WorkspaceSettings, 1) is None:
-        db.add(
-            WorkspaceSettings(
-                id=1,
-                workspace_name="LinkTMS",
-                product_name="CanberraAI LeadPilot",
-                seller_name="LinkTMS",
-                offering="We help companies staff critical roles without a long search cycle.",
-                ideal_customer="Growing companies that are hiring",
-            )
+    row = db.get(WorkspaceSettings, 1)
+    if row is None:
+        row = WorkspaceSettings(
+            id=1,
+            workspace_name="LinkTMS",
+            product_name="CanberraAI LeadPilot",
+            seller_name="LinkTMS",
+            offering="We help companies staff critical roles without a long search cycle.",
+            ideal_customer=IDEAL_CUSTOMER,
         )
+        db.add(row)
+        db.flush()
+    apply_icp_defaults(row)
 
 
 def ensure_llm_config(db: Session) -> None:

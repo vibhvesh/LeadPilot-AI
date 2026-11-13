@@ -25,6 +25,39 @@ class SearchCriteria(Base):
     postal_code: Mapped[str] = mapped_column(String(20), default="")
     radius_km: Mapped[int | None] = mapped_column(Integer, nullable=True)
     results_limit: Mapped[int] = mapped_column(Integer, default=10)
+    states: Mapped[list] = mapped_column(JSON, default=list)
+    opportunity_type: Mapped[str] = mapped_column(String(160), default="")
+    buyer_type: Mapped[str] = mapped_column(String(200), default="")
+    role_category: Mapped[str] = mapped_column(String(80), default="")
+    posted_window: Mapped[str] = mapped_column(String(20), default="")
+    min_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    query_templates: Mapped[list] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class SearchPreset(Base):
+    """Admin-editable search chip. Seeded from the registry, then stored here."""
+
+    __tablename__ = "search_presets"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    slug: Mapped[str] = mapped_column(String(80), unique=True)
+    label: Mapped[str] = mapped_column(String(160))
+    country: Mapped[str] = mapped_column(String(80), default="United States")
+    states: Mapped[list] = mapped_column(JSON, default=list)
+    city: Mapped[str] = mapped_column(String(80), default="")
+    opportunity_type: Mapped[str] = mapped_column(String(160), default="")
+    buyer_type: Mapped[str] = mapped_column(String(200), default="")
+    role_category: Mapped[str] = mapped_column(String(80), default="")
+    industry: Mapped[str] = mapped_column(String(160), default="")
+    company_size: Mapped[str] = mapped_column(String(40), default="")
+    posted_window: Mapped[str] = mapped_column(String(20), default="")
+    min_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    keywords: Mapped[str] = mapped_column(String(500), default="")
+    query_templates: Mapped[list] = mapped_column(JSON, default=list)
+    ai_text: Mapped[str] = mapped_column(Text, default="")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 

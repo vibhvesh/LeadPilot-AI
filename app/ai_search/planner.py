@@ -4,6 +4,7 @@ import re
 
 from app.core.errors import AppError
 from app.providers.llm import LLMClient
+from app.search.presets import criteria_brief
 from app.settings.profile import profile_brief
 
 PLAN_SYSTEM = (
@@ -30,13 +31,15 @@ def normalize_plan(raw: dict | None, text: str) -> dict:
     }
 
 
-def make_plan(db, user, text: str, profile: dict) -> dict:
+def make_plan(db, user, text: str, profile: dict, criteria: dict | None = None) -> dict:
+    brief = criteria_brief(criteria)
     result = LLMClient(db, user).complete_json(
         purpose="ai_search_plan",
         system=PLAN_SYSTEM,
         prompt=(
             f"{profile_brief(profile)}\n"
-            "Turn this request into a search plan.\n"
+            "Turn this request into a search plan. Use the query templates when they fit the request.\n"
+            f"{brief}\n"
             f"Request: {text.strip()}"
         ),
     )
