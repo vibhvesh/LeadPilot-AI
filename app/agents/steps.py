@@ -3,9 +3,10 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.errors import AppError
 from app.models import Lead
 from app.search.normalize import extract_email, extract_phone
-from app.settings.profile import DEFAULT_OFFERING, DEFAULT_PRODUCT, DEFAULT_SELLER, profile_brief
+from app.settings.profile import profile_brief
 
 SYSTEM = (
     "You are a sales research assistant for CanberraAI LeadPilot. "
@@ -27,10 +28,6 @@ def orchestrate(lead: Lead) -> dict:
 
 def research(lead: Lead, llm, profile: dict | None = None) -> dict:
     snippet = (lead.raw_payload or {}).get("snippet") or lead.notes or ""
-    fallback = {
-        "summary": snippet or f"{lead.company} is a {lead.industry or 'business'} organization in {lead.city or lead.country or 'the target region'}.",
-        "signals": [part for part in [lead.industry, lead.company_size, lead.keywords] if part],
-    }
     result = llm.complete_json(
         purpose="company_research",
         system=SYSTEM,
@@ -40,15 +37,19 @@ def research(lead: Lead, llm, profile: dict | None = None) -> dict:
             f"Company: {lead.company}\nIndustry: {lead.industry}\nLocation: {lead.city}, {lead.state}, {lead.country}\n"
             f"Website: {lead.website}\nNotes: {snippet}"
         ),
-        fallback=fallback,
     )
-    data = result["data"]
-    summary = str(data.get("summary") or fallback["summary"])[:2000]
+    data = result["data"] if isinstance(result.get("data"), dict) else {}
+    summary = str(data.get("summary") or "").strip()
+    if not summary:
+        raise AppError("The model did not return a research summary")
+    signals = data.get("signals") or []
+    if isinstance(signals, str):
+        signals = [signals]
     return {
         "agent": "research",
         "title": "Company Research Agent",
-        "summary": summary,
-        "output": {"summary": summary, "signals": data.get("signals") or fallback["signals"], "provider": result["provider"]},
+        "summary": summary[:2000],
+        "output": {"summary": summary[:2000], "signals": signals, "provider": result["provider"]},
         "note": result.get("note") or "",
     }
 
@@ -106,13 +107,6 @@ def quality(db: Session, lead: Lead) -> dict:
 
 
 def qualify(lead: Lead, llm, quality_step: dict, profile: dict | None = None) -> dict:
-    base = heuristic_score(lead, quality_step["output"])
-    fallback = {
-        "score": base,
-        "fit": "high" if base >= 75 else "medium" if base >= 55 else "low",
-        "reasons": _reasons(lead, quality_step["output"]),
-        "recommend_qualify": base >= 65 and not quality_step["output"].get("duplicate"),
-    }
     result = llm.complete_json(
         purpose="lead_qualification",
         system=SYSTEM + " Do not mark the lead qualified. A person reviews that decision.",
@@ -125,18 +119,20 @@ def qualify(lead: Lead, llm, quality_step: dict, profile: dict | None = None) ->
             f"Region: {lead.city}, {lead.state}, {lead.country} {lead.postal_code}\n"
             f"Quality: {quality_step['output']}"
         ),
-        fallback=fallback,
     )
-    data = result["data"]
+    data = result["data"] if isinstance(result.get("data"), dict) else {}
     try:
-        score = int(data.get("score", fallback["score"]))
-    except (TypeError, ValueError):
-        score = fallback["score"]
+        score = int(data["score"])
+    except (KeyError, TypeError, ValueError):
+        raise AppError("The model did not return a score") from None
     score = max(0, min(score, 100))
-    reasons = data.get("reasons") or fallback["reasons"]
+    reasons = data.get("reasons") or []
     if isinstance(reasons, str):
         reasons = [reasons]
-    recommend = bool(data.get("recommend_qualify", fallback["recommend_qualify"]))
+    fit = str(data.get("fit") or "").strip().lower()
+    if fit not in {"low", "medium", "high"}:
+        fit = "high" if score >= 75 else "medium" if score >= 55 else "low"
+    recommend = bool(data.get("recommend_qualify"))
     if quality_step["output"].get("duplicate"):
         recommend = False
     summary = f"Score {score}. " + "; ".join(str(item) for item in reasons[:3])
@@ -146,7 +142,7 @@ def qualify(lead: Lead, llm, quality_step: dict, profile: dict | None = None) ->
         "summary": summary[:500],
         "output": {
             "score": score,
-            "fit": data.get("fit") or fallback["fit"],
+            "fit": fit,
             "reasons": reasons,
             "recommend_qualify": recommend,
             "provider": result["provider"],
@@ -157,21 +153,6 @@ def qualify(lead: Lead, llm, quality_step: dict, profile: dict | None = None) ->
 
 def outreach(lead: Lead, llm, qualification: dict, profile: dict | None = None) -> dict:
     contact = lead.contact_name or "there"
-    seller = (profile or {}).get("seller_name") or DEFAULT_SELLER
-    product = (profile or {}).get("product_name") or DEFAULT_PRODUCT
-    offering = (profile or {}).get("offering") or DEFAULT_OFFERING
-    fallback = {
-        "subject": f"Idea for {lead.company}",
-        "body": (
-            f"Hello {contact},\n\n"
-            f"I came across {lead.company} while looking at {lead.industry or 'growing'} teams"
-            f"{' in ' + lead.city if lead.city else ''}. "
-            f"{offering}\n\n"
-            "Would you be open to a short conversation next week?\n\n"
-            f"— {seller} / {product}\n\n"
-            "This is a draft. It has not been sent."
-        ),
-    }
     result = llm.complete_json(
         purpose="outreach_draft",
         system=SYSTEM + " Write a short outreach email draft. Do not send it.",
@@ -182,52 +163,18 @@ def outreach(lead: Lead, llm, qualification: dict, profile: dict | None = None) 
             f"Company: {lead.company}\nContact: {contact}\nIndustry: {lead.industry}\n"
             f"Score: {qualification['output'].get('score')}\nReasons: {qualification['output'].get('reasons')}"
         ),
-        fallback=fallback,
     )
-    data = result["data"]
-    subject = str(data.get("subject") or fallback["subject"])[:300]
-    body = str(data.get("body") or fallback["body"])[:4000]
+    data = result["data"] if isinstance(result.get("data"), dict) else {}
+    subject = str(data.get("subject") or "").strip()
+    body = str(data.get("body") or "").strip()
+    if not subject or not body:
+        raise AppError("The model did not return an outreach draft")
     if "draft" not in body.lower():
         body += "\n\nThis is a draft. It has not been sent."
     return {
         "agent": "outreach",
         "title": "Outreach Drafting Agent",
-        "summary": subject,
-        "output": {"subject": subject, "body": body, "delivery": "draft", "provider": result["provider"]},
+        "summary": subject[:300],
+        "output": {"subject": subject[:300], "body": body[:4000], "delivery": "draft", "provider": result["provider"]},
         "note": result.get("note") or "",
     }
-
-
-def heuristic_score(lead: Lead, quality: dict) -> int:
-    score = 35
-    if lead.email:
-        score += 15
-    if lead.phone:
-        score += 10
-    if lead.website:
-        score += 10
-    if lead.industry:
-        score += 10
-    if lead.city or lead.country:
-        score += 8
-    if lead.contact_name:
-        score += 7
-    score += int(quality.get("confidence", 50) / 10)
-    if quality.get("duplicate"):
-        score -= 30
-    return max(0, min(score, 96))
-
-
-def _reasons(lead: Lead, quality: dict) -> list[str]:
-    reasons = []
-    if lead.industry:
-        reasons.append(f"Industry match: {lead.industry}")
-    if lead.email:
-        reasons.append("A contact email is on file")
-    else:
-        reasons.append("No contact email yet")
-    if quality.get("duplicate"):
-        reasons.append("Possible duplicate")
-    if lead.city or lead.country:
-        reasons.append(f"Located in {', '.join(part for part in (lead.city, lead.country) if part)}")
-    return reasons or ["Limited public information"]

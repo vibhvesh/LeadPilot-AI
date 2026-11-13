@@ -91,7 +91,7 @@ def _search_round(db, actor, plan, collected, sources, providers) -> int:
     for query in plan.get("queries") or []:
         hits = search_query(db, query, limit=4)
         for hit in hits:
-            provider = hit.get("search_provider") or "mock"
+            provider = hit.get("search_provider") or ""
             if provider not in providers:
                 providers.append(provider)
             if hit.get("source_url"):

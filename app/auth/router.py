@@ -11,6 +11,7 @@ from app.auth.service import client_ip, establish_identity, issue_session, revok
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.deps import get_current_user
+from app.core.errors import AppError
 from app.core.permissions import permission_map
 from app.providers.llm import select_provider
 from app.search.providers import choose_search_provider
@@ -150,8 +151,8 @@ def me(request: Request, db: Session = Depends(get_db), user=Depends(get_current
     llm_provider, llm_model, llm_note = select_provider(db)
     try:
         search_provider, _key = choose_search_provider(db)
-    except Exception:
-        search_provider = settings.search_provider
+    except AppError:
+        search_provider = ""
     pending_users = None
     if has_permission(db, user, "users"):
         pending_users = db.scalar(select(func.count()).select_from(User).where(User.status == "pending")) or 0

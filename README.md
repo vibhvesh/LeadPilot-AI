@@ -21,7 +21,7 @@ GitHub Pages cannot run this service. The FastAPI app serves both the API and th
 
 `vibhvesh@gmail.com` is the Super Admin and always has every module. A new Google account is stored as **pending** and gets no session until an Admin or the Super Admin approves them. Default Member access covers the lead workspace (dashboard, leads, pipeline, follow-ups, team, reports, GrokBot, search, geo, comments) and not user administration, API keys, activity, or workspace settings. Those defaults can be changed; every API route checks the stored permission.
 
-Search uses Tavily or Brave when a key exists, otherwise a built-in demo source. LLM routing on **Auto** uses the first configured xAI, Gemini, or OpenAI key, otherwise a deterministic demo model. Outreach is stored as a draft. There is no send action. A lead becomes Qualified only through review.
+Search uses Tavily or Brave when a key exists. With no search key, a search returns “No search provider configured” and saves nothing. LLM routing on **Auto** uses the first configured xAI, Gemini, or OpenAI key. With no model key, research, scoring, and outreach return “No LLM provider configured”. `DEMO_MODE` only enables local sign-in. Outreach is stored as a draft. There is no send action. A lead becomes Qualified only through review.
 
 ## Run locally in demo mode
 
@@ -84,7 +84,7 @@ Set any of these in the environment, or paste them in **API keys** (admins only)
 
 Environment values win over a key saved in the database. On **AI / LLM**, leave the provider on **Auto** to pick the first real key, or pin xAI, Gemini, or OpenAI. Quotas for each provider and role are edited under **API keys**. A pipeline completion and a search each count as one use.
 
-Web search results often have a company and a URL but no email or phone. Those fields are filled only when they are present in the result. The demo source includes sample contact details so the flow can be tried immediately.
+Web search results often have a company and a URL but no email or phone. Those fields are filled only when they are present in the result.
 
 AI search has its own per-user quota (`ai_search` on the API keys page). Members start at 10 runs a day and 100 a month. Each run is written to the activity log.
 
@@ -92,7 +92,7 @@ AI search has its own per-user quota (`ai_search` on the API keys page). Members
 
 On **Search criteria**, type a request such as “hospitals in Gujarat that use walkie-talkies and might buy Boondock Echo” and choose **Run AI search**.
 
-The planner (xAI, Gemini, or OpenAI, or the demo model when no key is set) returns a target profile, locations, signals, and 3–8 queries. Those queries run on every configured search provider (Tavily and Brave when keys exist, otherwise the demo source). The top pages are read, companies and contacts are extracted, and thin results trigger another round up to `AI_SEARCH_MAX_ROUNDS`. New rows are deduplicated, enriched, and scored, then saved as leads with source `ai-search`. The plan and source URLs stay on the search page.
+The planner (xAI, Gemini, or OpenAI) returns a target profile, locations, signals, and search queries. Those queries run on every configured search provider (Tavily and Brave when keys exist). The top pages are read, companies and contacts are extracted, and thin results trigger another round up to `AI_SEARCH_MAX_ROUNDS`. New rows are deduplicated, enriched, and scored, then saved as leads with source `ai-search`. The plan and source URLs stay on the search page. Without a model key or a search key, the page shows that error and saves no leads.
 
 **Deep search with Grok Bot** uses the same text, stores a `pending` request, and POSTs this JSON to `GROKBOT_WEBHOOK_URL` when that variable is set:
 

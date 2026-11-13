@@ -39,6 +39,7 @@
 
   <section id="overview" class="page active">
     <div class="heading"><div><h1 id="greeting">Workspace</h1><div class="muted">Your sales workspace at a glance.</div></div><span class="demo" id="mode-pill">WORKSPACE</span></div>
+    <p class="error" id="provider-status" hidden></p>
     <div class="banner" id="start-banner">
       <div><b>Start with a target profile.</b><div class="muted">Save search criteria, run it, then score the new leads in GrokBot. A person still has to mark anyone Qualified.</div></div>
       <button class="btn" type="button" data-jump="search">Create a search</button>
@@ -118,6 +119,7 @@
 
   <section id="grokbot" class="page">
     <div class="heading"><div><h1>GrokBot Agent Workspace</h1><div class="muted">Research, enrich, score, and draft outreach. Nothing is sent automatically.</div></div></div>
+    <p class="error" id="agent-provider-status" hidden></p>
     <div class="grid2">
       <div class="card">
         <h2>Run the pipeline</h2>
@@ -150,6 +152,7 @@
 
   <section id="search" class="page">
     <div class="heading"><div><h1>Search criteria</h1><div class="muted">Describe who you want in plain language, or use a structured profile.</div></div></div>
+    <p class="error" id="search-provider-status" hidden></p>
     <div class="card" style="margin-bottom:14px">
       <h2>AI search</h2>
       <div class="field"><label>Request</label><textarea id="ai-text" placeholder="Hospitals in Gujarat that use walkie-talkies and might buy Boondock Echo"></textarea></div>
@@ -196,7 +199,7 @@
       </div>
       <div class="card">
         <h2>Who can use a provider</h2>
-        <div class="field"><label>Provider</label><select id="acc-provider"><option value="xai">xAI / Grok</option><option value="gemini">Gemini</option><option value="openai">OpenAI</option><option value="search">Web search</option><option value="ai_search">AI search</option><option value="mock">Demo mock</option></select></div>
+        <div class="field"><label>Provider</label><select id="acc-provider"><option value="xai">xAI / Grok</option><option value="gemini">Gemini</option><option value="openai">OpenAI</option><option value="search">Web search</option><option value="ai_search">AI search</option></select></div>
         <div class="field"><label>Role</label><select id="acc-role"><option value="member">Member</option><option value="admin">Admin</option><option value="super_admin">Super Admin</option></select></div>
         <div class="split3">
           <div class="field"><label>Daily quota</label><input id="acc-daily" type="number" value="25"></div>
@@ -210,13 +213,14 @@
   </section>
 
   <section id="ai" class="page">
-    <div class="heading"><div><h1>AI / LLM configuration</h1><div class="muted">Auto uses the first configured provider. With no key, the demo model runs.</div></div></div>
+    <div class="heading"><div><h1>AI / LLM configuration</h1><div class="muted">Auto uses the first configured provider. Research, scoring, and outreach need a key.</div></div></div>
+    <p class="error" id="ai-provider-status" hidden></p>
     <div class="grid2">
       <div class="card">
         <h2>Model routing</h2>
-        <div class="field"><label>Primary provider</label><select id="ai-primary"><option value="auto">Auto — first configured key</option><option value="xai">xAI / Grok</option><option value="gemini">Gemini</option><option value="openai">OpenAI</option><option value="mock">Demo model</option></select></div>
+        <div class="field"><label>Primary provider</label><select id="ai-primary"><option value="auto">Auto — first configured key</option><option value="xai">xAI / Grok</option><option value="gemini">Gemini</option><option value="openai">OpenAI</option></select></div>
         <div class="field"><label>Model ID</label><input id="ai-model" placeholder="Leave blank for the provider default"></div>
-        <div class="field"><label>Fallback</label><select id="ai-fallback"><option value="mock">Demo model</option><option value="xai">xAI / Grok</option><option value="gemini">Gemini</option><option value="openai">OpenAI</option></select></div>
+        <div class="field"><label>Fallback</label><select id="ai-fallback"><option value="">None</option><option value="xai">xAI / Grok</option><option value="gemini">Gemini</option><option value="openai">OpenAI</option></select></div>
         <div class="split3">
           <div class="field"><label>Temperature</label><input id="ai-temp" type="number" min="0" max="2" step="0.1" value="0.2"></div>
           <div class="field"><label>Max tokens</label><input id="ai-tokens" type="number" value="1200"></div>
@@ -227,7 +231,7 @@
       <div class="card">
         <h2>Lead generation logic</h2>
         <div class="list">
-          <div class="item"><b>1. Search and collect</b>Web search, or the built-in demo source.</div>
+          <div class="item"><b>1. Search and collect</b>Web search through Tavily or Brave. A missing key stops the search.</div>
           <div class="item"><b>2. Normalize and deduplicate</b>Same website or company name is not saved twice.</div>
           <div class="item"><b>3. Specialist agents</b>Research, enrichment, quality, score, and an email draft.</div>
           <div class="item"><b>4. Human review</b>Qualified is set only when someone presses Mark qualified.</div>

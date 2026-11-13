@@ -7,7 +7,7 @@ from app.core.errors import ProviderDenied, QuotaExceeded
 from app.models import ProviderAccess, ProviderUsage
 from app.models.identity import utcnow
 
-LLM_PROVIDERS = ("xai", "gemini", "openai", "mock")
+LLM_PROVIDERS = ("xai", "gemini", "openai")
 KEY_PROVIDERS = ("xai", "gemini", "openai", "tavily", "brave")
 
 
@@ -95,7 +95,7 @@ def list_access(db: Session) -> list[dict]:
 
 def upsert_access(db: Session, payload: dict) -> dict:
     provider = (payload.get("provider") or "").strip().lower()
-    if provider not in {"xai", "gemini", "openai", "search", "mock", "tavily", "brave", "ai_search"}:
+    if provider not in {"xai", "gemini", "openai", "search", "tavily", "brave", "ai_search"}:
         from app.core.errors import AppError
 
         raise AppError("Unknown provider")

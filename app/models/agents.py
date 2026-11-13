@@ -16,7 +16,7 @@ class AgentRun(Base):
     lead_id: Mapped[int] = mapped_column(ForeignKey("leads.id"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     status: Mapped[str] = mapped_column(String(20), default="completed")
-    provider: Mapped[str] = mapped_column(String(40), default="mock")
+    provider: Mapped[str] = mapped_column(String(40), default="")
     model: Mapped[str] = mapped_column(String(120), default="")
     steps: Mapped[list] = mapped_column(JSON, default=list)
     score: Mapped[int | None] = mapped_column(Integer, nullable=True)
