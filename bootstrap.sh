@@ -51,20 +51,30 @@ log "Creating secure environment configuration..."
 db_password="$(openssl rand -hex 32)"
 admin_api_key="$(openssl rand -hex 32)"
 session_secret="$(openssl rand -hex 48)"
+encryption_key="$(openssl rand -hex 32)"
 cat > .env <<EOF
 DB_PASSWORD=${db_password}
 ADMIN_API_KEY=${admin_api_key}
 DATABASE_URL=postgresql+psycopg://leadpilot:${db_password}@db:5432/leadpilot
 PUBLIC_BASE_URL=https://${DOMAIN}
+APP_ENV=production
+DEMO_MODE=false
 SESSION_SECRET=${session_secret}
-SESSION_COOKIE_NAME=canberraai_session
+SESSION_COOKIE_NAME=leadpilot_session
 SESSION_MAX_AGE_SECONDS=28800
+SESSION_COOKIE_SECURE=true
+ENCRYPTION_KEY=${encryption_key}
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_DISCOVERY_URL=https://accounts.google.com/.well-known/openid-configuration
 GOOGLE_REDIRECT_URI=https://${DOMAIN}/auth/google/callback
 SUPER_ADMIN_EMAIL=vibhvesh@gmail.com
-ALLOWED_GOOGLE_WORKSPACE_DOMAIN=linktms.com
+SEARCH_PROVIDER=auto
+XAI_API_KEY=
+GEMINI_API_KEY=
+OPENAI_API_KEY=
+TAVILY_API_KEY=
+BRAVE_API_KEY=
 EOF
 chmod 600 .env
 

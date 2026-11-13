@@ -1,6 +1,8 @@
 # CanberraAI multi-company authentication design
 
-**Status:** Approved architecture; implementation is not yet enabled in the application.  
+**MVP status:** Google sign-in, demo sign-in, approval, and per-module permissions are implemented. See the README. The multi-company Entra ID design below is not built yet.
+
+**Status:** Approved architecture; multi-company Microsoft sign-in is not enabled yet.  
 **Product:** CanberraAI Lead Generation System for TMS LLC  
 **Repository:** LeadPilot-AI
 

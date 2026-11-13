@@ -1,0 +1,522 @@
+const TAB_MODULE = {
+  overview: "dashboard", leads: "leads", pipeline: "pipeline", followups: "followups",
+  team: "team", reports: "reports", grokbot: "grokbot", users: "users", search: "search",
+  apis: "apikeys", ai: "ai", geo: "geo", activity: "activity", updates: "comments", settings: "settings",
+};
+const ROLE_LABEL = {super_admin: "Super Admin", admin: "Admin", member: "Member"};
+const state = {me: null, leads: [], selectedLead: null, selectedUser: null, modules: [], roles: {}};
+
+const $ = (id) => document.getElementById(id);
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (ch) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[ch]));
+}
+function pill(status) {
+  const warm = status === "Contacted" || status === "Lost" || status === "pending" || status === "rejected";
+  return `<span class="status${warm ? " pending" : ""}">${esc(status)}</span>`;
+}
+function money(value) {
+  const amount = Number(value) || 0;
+  if (amount >= 100000) {
+    const lakhs = amount / 100000;
+    return "₹" + (lakhs >= 10 ? Math.round(lakhs) : lakhs.toFixed(1)) + "L";
+  }
+  return "₹" + amount.toLocaleString("en-IN");
+}
+function percent(value) { return ((Number(value) || 0) * 100).toFixed(1) + "%"; }
+function can(module, manage = false) {
+  const flags = (state.me && state.me.permissions[module]) || {};
+  return manage ? !!flags.manage : !!(flags.view || flags.manage);
+}
+function toast(text) {
+  const el = $("toast");
+  el.hidden = false;
+  el.textContent = text;
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { el.hidden = true; }, 2800);
+}
+async function api(path, options = {}) {
+  const opts = {credentials: "same-origin", headers: {}, ...options};
+  if (opts.body && typeof opts.body !== "string") {
+    opts.headers["Content-Type"] = "application/json";
+    opts.body = JSON.stringify(opts.body);
+  }
+  const res = await fetch(path, opts);
+  if (res.status === 401) { location.href = "/login"; throw new Error("Sign-in required"); }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Request failed");
+  return data;
+}
+function greeting(name) {
+  const hour = new Date().getHours();
+  const part = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
+  const first = (name || "there").split(" ")[0];
+  return `Good ${part}, ${first}`;
+}
+function show(tab) {
+  document.querySelectorAll(".tab").forEach((button) => button.classList.toggle("active", button.dataset.tab === tab));
+  document.querySelectorAll(".page").forEach((page) => page.classList.toggle("active", page.id === tab));
+  history.replaceState(null, "", "#" + tab);
+  const loader = loaders[tab];
+  if (loader) loader().catch((error) => toast(error.message));
+}
+
+document.querySelectorAll(".tab").forEach((button) => button.addEventListener("click", () => show(button.dataset.tab)));
+document.querySelectorAll("[data-jump]").forEach((button) => button.addEventListener("click", () => show(button.dataset.jump)));
+$("signout").addEventListener("click", async () => { await fetch("/auth/logout", {method: "POST"}); location.href = "/login"; });
+
+function applyAccess() {
+  document.querySelectorAll(".tab").forEach((button) => { button.hidden = !can(TAB_MODULE[button.dataset.tab]); });
+  document.querySelectorAll("[data-manage]").forEach((el) => { el.hidden = !can(el.dataset.manage, true); });
+  const badge = $("pending-badge");
+  if (state.me.pending_users) { badge.hidden = false; badge.textContent = state.me.pending_users; }
+  else badge.hidden = true;
+  $("who-email").textContent = state.me.email;
+  $("who-role").textContent = ROLE_LABEL[state.me.role] || state.me.role;
+  $("greeting").textContent = greeting(state.me.name || state.me.email);
+  const live = state.me.llm_provider !== "mock" || state.me.search_provider !== "mock";
+  $("mode-pill").textContent = state.me.demo_mode && !live ? "DEMO MODE · LIVE DATABASE" : (live ? "LIVE PROVIDERS" : "WORKSPACE");
+  $("role-save").hidden = state.me.role !== "super_admin";
+}
+
+async function boot() {
+  state.me = await api("/api/me");
+  applyAccess();
+  const wanted = location.hash.slice(1);
+  const first = document.querySelector(".tab:not([hidden])");
+  if (wanted && document.getElementById(wanted) && can(TAB_MODULE[wanted])) show(wanted);
+  else if (first) show(first.dataset.tab);
+}
+
+const loaders = {
+  overview: loadOverview,
+  leads: loadLeads,
+  pipeline: loadPipeline,
+  followups: loadFollowups,
+  team: loadTeam,
+  reports: loadReports,
+  grokbot: loadGrok,
+  users: loadUsers,
+  search: loadSearch,
+  apis: loadApis,
+  ai: loadAi,
+  geo: loadGeo,
+  activity: loadActivity,
+  updates: loadComments,
+  settings: loadSettings,
+};
+
+async function loadOverview() {
+  const data = await api("/api/dashboard");
+  $("m-total").textContent = data.total_leads;
+  $("m-qualified").textContent = data.qualified_leads;
+  $("m-value").textContent = money(data.pipeline_value);
+  $("m-rate").textContent = percent(data.conversion_rate);
+  $("m-follow").textContent = data.followups_due + " follow-ups open · won / all leads";
+  $("start-banner").hidden = data.total_leads > 0;
+  $("recent-leads").innerHTML = data.recent_leads.length ? data.recent_leads.map((lead) =>
+    `<tr class="clicky" data-open-lead="${lead.id}"><td>${esc(lead.contact_name || "—")}</td><td>${esc(lead.company)}</td><td>${esc(lead.region || "—")}</td><td>${lead.score ?? "—"}</td><td>${pill(lead.status)}</td></tr>`
+  ).join("") : `<tr><td colspan="5">No leads yet.</td></tr>`;
+  const admin = data.admin;
+  $("admin-summary").innerHTML = admin ? `
+    <div class="item"><b>Pending approval</b>${admin.pending} account${admin.pending === 1 ? "" : "s"}</div>
+    <div class="item"><b>Approved people</b>${admin.approved}</div>
+    <div class="item"><b>New user policy</b>${esc(admin.policy)}</div>` : `<div class="item"><b>Your role</b>${esc(ROLE_LABEL[state.me.role] || state.me.role)}</div>`;
+  $("recent-leads").querySelectorAll("[data-open-lead]").forEach((row) => row.addEventListener("click", () => { show("leads"); setTimeout(() => openLead(Number(row.dataset.openLead)), 50); }));
+}
+
+async function ensureLeads() {
+  state.leads = await api("/api/leads");
+  return state.leads;
+}
+function fillLeadSelect(select, placeholder) {
+  const current = select.value;
+  select.innerHTML = `<option value="">${esc(placeholder || "Select a lead")}</option>` + state.leads.map((lead) => `<option value="${lead.id}">${esc(lead.company)}</option>`).join("");
+  if (current) select.value = current;
+}
+
+async function loadLeads() {
+  const params = new URLSearchParams();
+  if ($("lead-q").value.trim()) params.set("q", $("lead-q").value.trim());
+  if ($("lead-status").value) params.set("status", $("lead-status").value);
+  const query = params.toString();
+  state.leads = await api("/api/leads" + (query ? "?" + query : ""));
+  $("lead-rows").innerHTML = state.leads.length ? state.leads.map((lead) =>
+    `<tr class="clicky" data-lead="${lead.id}"><td>${esc(lead.company)}</td><td>${esc(lead.contact_name || "—")}<div class="muted">${esc(lead.email || "")}</div></td><td>${esc(lead.source)}</td><td>${esc(lead.region || "—")}</td><td>${lead.score ?? "—"}</td><td>${pill(lead.status)}</td></tr>`
+  ).join("") : `<tr><td colspan="6">No leads match. Run a search or add one.</td></tr>`;
+  $("lead-rows").querySelectorAll("[data-lead]").forEach((row) => row.addEventListener("click", () => openLead(Number(row.dataset.lead))));
+  if (state.selectedLead) openLead(state.selectedLead);
+}
+
+function openLead(id) {
+  const lead = state.leads.find((item) => item.id === id);
+  state.selectedLead = id;
+  if (!lead) return;
+  const manage = can("leads", true);
+  $("lead-detail").innerHTML = `
+    <div class="note"><b>${esc(lead.company)}</b> ${esc(lead.qualification_summary || "Not scored yet.")}</div>
+    <div class="split3">
+      <div class="item"><b>Contact</b>${esc(lead.contact_name || "—")}<div class="muted">${esc(lead.email || "No email")} · ${esc(lead.phone || "No phone")}</div></div>
+      <div class="item"><b>Location</b>${esc([lead.city, lead.district, lead.state, lead.country, lead.postal_code].filter(Boolean).join(", ") || "—")}</div>
+      <div class="item"><b>Web</b>${lead.website ? `<a href="${esc(lead.website)}" target="_blank" rel="noreferrer">${esc(lead.website)}</a>` : "No website yet"}</div>
+    </div>
+    <div class="field"><label>Notes</label><textarea id="detail-notes">${esc(lead.notes || "")}</textarea></div>
+    <div class="row">
+      ${manage ? `<select id="detail-status"><option ${lead.status === "New" ? "selected" : ""}>New</option><option ${lead.status === "Contacted" ? "selected" : ""}>Contacted</option><option ${lead.status === "Won" ? "selected" : ""}>Won</option><option ${lead.status === "Lost" ? "selected" : ""}>Lost</option></select>
+      <button class="btn small" type="button" id="detail-save">Save</button>
+      <button class="btn small" type="button" id="detail-qualify">Mark qualified</button>` : ""}
+      <button class="btn secondary small" type="button" id="detail-agent">Score in GrokBot</button>
+    </div>
+    <div class="list" id="detail-comments" style="margin-top:12px"></div>`;
+  api("/api/comments?lead_id=" + id).then((rows) => {
+    const host = $("detail-comments");
+    if (!host) return;
+    host.innerHTML = rows.map((row) => `<div class="item"><b>${esc(row.author_name || row.author_email)}</b>${esc(row.body)}</div>`).join("") || `<div class="muted">No comments on this lead.</div>`;
+  }).catch(() => {});
+  $("detail-agent").onclick = () => { $("agent-lead").dataset.prefer = String(id); show("grokbot"); };
+  if (manage) {
+    $("detail-save").onclick = async () => {
+      await api("/api/leads/" + id, {method: "PATCH", body: {notes: $("detail-notes").value, status: $("detail-status").value}});
+      toast("Lead saved");
+      loadLeads();
+    };
+    $("detail-qualify").onclick = async () => {
+      await api("/api/leads/" + id + "/review", {method: "POST", body: {decision: "qualify"}});
+      toast("Marked qualified");
+      loadLeads();
+    };
+  }
+}
+
+$("toggle-lead-form").addEventListener("click", () => { $("lead-form").hidden = !$("lead-form").hidden; });
+$("reload-leads").addEventListener("click", () => loadLeads().catch((error) => toast(error.message)));
+$("save-lead").addEventListener("click", async () => {
+  $("lead-error").textContent = "";
+  try {
+    await api("/api/leads", {method: "POST", body: {
+      company: $("lead-company").value, contact_name: $("lead-contact").value, email: $("lead-email").value,
+      phone: $("lead-phone").value, website: $("lead-website").value, industry: $("lead-industry").value,
+      country: $("lead-country").value, state: $("lead-state").value, city: $("lead-city").value, notes: $("lead-notes").value,
+    }});
+    $("lead-form").hidden = true;
+    toast("Lead added");
+    loadLeads();
+  } catch (error) { $("lead-error").textContent = error.message; }
+});
+
+async function loadPipeline() {
+  const data = await api("/api/pipeline");
+  const max = Math.max(1, ...Object.values(data.counts));
+  $("pipeline-board").innerHTML = ["New", "Contacted", "Qualified", "Won", "Lost"].map((status) => `
+    <div class="col"><h3>${esc(status)} <span>${data.counts[status] || 0}</span></h3>
+      <div class="bar"><i style="width:${Math.round(((data.counts[status] || 0) / max) * 100)}%"></i></div>
+      ${(data.columns[status] || []).map((lead) => `<div class="mini"><b>${esc(lead.company)}</b><div class="muted">${esc(lead.region || lead.contact_name || "")}</div></div>`).join("") || `<div class="muted">None</div>`}
+    </div>`).join("");
+}
+
+async function loadFollowups() {
+  await ensureLeads();
+  fillLeadSelect($("fu-lead"), "Workspace reminder");
+  const rows = await api("/api/followups");
+  $("fu-list").innerHTML = rows.length ? rows.map((row) => `
+    <div class="item"><b>${esc(row.title)}</b><span class="muted">${esc(row.company || "Workspace")} · ${row.due_at ? esc(new Date(row.due_at).toLocaleString()) : "No due date"} · ${esc(row.status)}</span>
+    ${row.status === "open" && can("followups", true) ? `<div><button class="btn small secondary" type="button" data-done="${row.id}">Mark done</button></div>` : ""}</div>`).join("") : `<div class="muted">No follow-ups yet.</div>`;
+  $("fu-list").querySelectorAll("[data-done]").forEach((button) => button.addEventListener("click", async () => {
+    await api("/api/followups/" + button.dataset.done, {method: "PATCH", body: {status: "done"}});
+    loadFollowups();
+  }));
+}
+$("fu-save").addEventListener("click", async () => {
+  try {
+    const due = $("fu-due").value ? new Date($("fu-due").value).toISOString() : null;
+    await api("/api/followups", {method: "POST", body: {title: $("fu-title").value, lead_id: $("fu-lead").value || null, due_at: due, notes: $("fu-notes").value}});
+    $("fu-title").value = ""; $("fu-notes").value = "";
+    toast("Follow-up saved");
+    loadFollowups();
+  } catch (error) { toast(error.message); }
+});
+
+async function loadTeam() {
+  const rows = await api("/api/team");
+  $("team-list").innerHTML = rows.map((row) => `<div class="item"><b>${esc(row.name || row.email)}</b>${esc(ROLE_LABEL[row.role] || row.role)} · ${esc(row.email)}</div>`).join("") || `<div class="muted">No approved members yet.</div>`;
+}
+
+async function loadReports() {
+  const data = await api("/api/reports");
+  const cards = [
+    ["Leads this month", data.leads_this_month],
+    ["Qualified or won", data.qualified],
+    ["Conversion", percent(data.conversion_rate)],
+    ["Saved searches", data.active_campaigns],
+  ];
+  $("report-stats").innerHTML = cards.map(([label, value]) => `<div class="card"><div class="label">${esc(label)}</div><div class="num">${esc(value)}</div></div>`).join("");
+  $("report-countries").innerHTML = data.by_country.length ? data.by_country.map((row) => `<div class="activity"><div><b>${esc(row.country)}</b></div><span>${row.count}</span></div>`).join("") : `<div class="muted">No countries recorded yet.</div>`;
+}
+
+async function loadGrok() {
+  await ensureLeads();
+  const prefer = $("agent-lead").dataset.prefer;
+  fillLeadSelect($("agent-lead"), "Choose a lead");
+  if (prefer) $("agent-lead").value = prefer;
+  const leadId = Number($("agent-lead").value || 0);
+  if (!leadId) { $("agent-steps").innerHTML = `<div class="muted">Choose a lead to see previous runs.</div>`; return; }
+  const runs = await api("/api/agents/runs?lead_id=" + leadId);
+  renderRun(runs[0]);
+}
+function renderRun(run) {
+  if (!run) {
+    $("agent-steps").innerHTML = `<div class="item">Head Thinker / Orchestrator</div><div class="item">Company Research</div><div class="item">Enrichment</div><div class="item">Lead qualification</div><div class="item">Outreach draft</div><div class="item">Quality and deduplication</div>`;
+    $("draft-subject").value = "";
+    $("draft-body").textContent = "Run the pipeline to write a draft. It stays a draft.";
+    $("agent-meta").textContent = "";
+    return;
+  }
+  $("agent-meta").textContent = `Provider ${run.provider} · ${run.model || "default"} · score ${run.score} · recommendation ${run.recommend_qualify ? "review for qualification" : "hold"} · status ${run.lead_status || "unchanged"}`;
+  $("agent-steps").innerHTML = (run.steps || []).map((step) => `<div class="step"><b>${esc(step.title)}</b><div>${esc(step.summary || "")}</div></div>`).join("");
+  $("draft-subject").value = (run.outreach && run.outreach.subject) || "";
+  $("draft-body").textContent = (run.outreach && run.outreach.body) || "";
+}
+$("agent-lead").addEventListener("change", () => loadGrok().catch((error) => toast(error.message)));
+$("agent-run").addEventListener("click", async () => {
+  const leadId = Number($("agent-lead").value || 0);
+  if (!leadId) { toast("Choose a lead first"); return; }
+  $("agent-run").disabled = true;
+  try {
+    const run = await api("/api/agents/run", {method: "POST", body: {lead_id: leadId}});
+    renderRun(run);
+    toast(run.recommend_qualify ? "Scored. Ready for your review." : "Scored. Left as not qualified.");
+  } catch (error) { toast(error.message); }
+  finally { $("agent-run").disabled = false; }
+});
+async function reviewSelected(decision) {
+  const leadId = Number($("agent-lead").value || 0);
+  if (!leadId) return;
+  await api("/api/leads/" + leadId + "/review", {method: "POST", body: {decision}});
+  toast(decision === "qualify" ? "Marked qualified" : "Marked lost");
+  loadGrok();
+}
+$("agent-qualify").addEventListener("click", () => reviewSelected("qualify").catch((error) => toast(error.message)));
+$("agent-reject").addEventListener("click", () => reviewSelected("reject").catch((error) => toast(error.message)));
+
+function matrix(host, permissions, attribute) {
+  const modules = state.modules.length ? state.modules : Object.keys(permissions).map((key) => ({key, label: key}));
+  host.innerHTML = `<div class="checks"><b>Module</b><b>View</b><b>Manage</b></div>` + modules.map((module) => {
+    const flags = permissions[module.key] || {view: false, manage: false};
+    return `<label class="checks"><span>${esc(module.label || module.key)}</span><input type="checkbox" ${attribute}="${module.key}:view" ${flags.view ? "checked" : ""}><input type="checkbox" ${attribute}="${module.key}:manage" ${flags.manage ? "checked" : ""}></label>`;
+  }).join("");
+}
+function readMatrix(host, attribute) {
+  const permissions = {};
+  host.querySelectorAll("[" + attribute + "]").forEach((input) => {
+    const [module, flag] = input.getAttribute(attribute).split(":");
+    permissions[module] = permissions[module] || {view: false, manage: false};
+    permissions[module][flag] = input.checked;
+    if (flag === "manage" && input.checked) permissions[module].view = true;
+  });
+  return permissions;
+}
+
+async function loadUsers() {
+  const data = await api("/api/users");
+  state.modules = data.modules;
+  state.roles = data.roles;
+  $("user-rows").innerHTML = data.users.map((user) => `<tr>
+    <td><button class="linkish" type="button" data-user="${user.id}">${esc(user.email)}</button><div class="muted">${esc(user.name || "")}</div></td>
+    <td>${esc(ROLE_LABEL[user.role] || user.role)}</td>
+    <td>${pill(user.status === "approved" ? "Approved" : user.status === "pending" ? "Pending" : "Rejected")}</td>
+    <td>${can("users", true) && user.role !== "super_admin" ? `<div class="row">
+      ${user.status !== "approved" ? `<button class="btn small" type="button" data-approve="${user.id}">Approve</button>` : ""}
+      ${user.status !== "rejected" ? `<button class="btn small danger" type="button" data-reject="${user.id}">Reject</button>` : ""}
+      <select data-role="${user.id}"><option value="member" ${user.role === "member" ? "selected" : ""}>Member</option><option value="admin" ${user.role === "admin" ? "selected" : ""}>Admin</option></select>
+    </div>` : ""}</td></tr>`).join("");
+  $("user-rows").querySelectorAll("[data-approve]").forEach((button) => button.addEventListener("click", () => decide(button.dataset.approve, "approve")));
+  $("user-rows").querySelectorAll("[data-reject]").forEach((button) => button.addEventListener("click", () => decide(button.dataset.reject, "reject")));
+  $("user-rows").querySelectorAll("[data-role]").forEach((select) => select.addEventListener("change", async () => {
+    try { await api("/api/users/" + select.dataset.role, {method: "PATCH", body: {role: select.value}}); toast("Role updated"); loadUsers(); }
+    catch (error) { toast(error.message); loadUsers(); }
+  }));
+  $("user-rows").querySelectorAll("[data-user]").forEach((button) => button.addEventListener("click", () => selectUser(Number(button.dataset.user))));
+  renderRoleTemplate();
+  if (state.selectedUser) selectUser(state.selectedUser);
+}
+async function decide(id, decision) {
+  await api("/api/users/" + id + "/decision", {method: "POST", body: {decision}});
+  state.me = await api("/api/me");
+  applyAccess();
+  toast(decision === "approve" ? "Account approved" : "Account rejected");
+  loadUsers();
+}
+async function selectUser(id) {
+  state.selectedUser = id;
+  const user = await api("/api/users/" + id);
+  $("perm-target").textContent = user.email + " · " + (ROLE_LABEL[user.role] || user.role);
+  matrix($("perm-grid"), user.permissions, "data-userperm");
+}
+function renderRoleTemplate() {
+  const role = $("role-template").value;
+  matrix($("role-grid"), state.roles[role] || {}, "data-roleperm");
+}
+$("role-template").addEventListener("change", renderRoleTemplate);
+$("perm-save").addEventListener("click", async () => {
+  if (!state.selectedUser) { toast("Select a user first"); return; }
+  await api("/api/users/" + state.selectedUser + "/permissions", {method: "PUT", body: {permissions: readMatrix($("perm-grid"), "data-userperm")}});
+  toast("Permissions saved");
+});
+$("perm-clear").addEventListener("click", async () => {
+  if (!state.selectedUser) return;
+  await api("/api/users/" + state.selectedUser + "/permissions", {method: "PUT", body: {permissions: {}}});
+  toast("Using role defaults");
+  selectUser(state.selectedUser);
+});
+$("role-save").addEventListener("click", async () => {
+  const role = $("role-template").value;
+  try {
+    await api("/api/permissions/roles/" + role, {method: "PUT", body: {permissions: readMatrix($("role-grid"), "data-roleperm")}});
+    toast("Role template saved");
+    loadUsers();
+  } catch (error) { toast(error.message); }
+});
+
+async function loadSearch() {
+  const geo = await api("/api/geo").catch(() => ({}));
+  if (geo.country && !$("s-country").value) {
+    $("s-country").value = geo.country; $("s-state").value = geo.state || ""; $("s-district").value = geo.district || "";
+    $("s-city").value = geo.city || ""; $("s-postal").value = geo.postal_code || "";
+  }
+  const [saved, runs] = await Promise.all([api("/api/search/criteria"), api("/api/search/runs")]);
+  $("s-list").innerHTML = saved.map((row) => `<div class="item"><b>${esc(row.name)}</b><div class="muted">${esc([row.industry, row.keywords, row.city, row.country].filter(Boolean).join(" · "))}</div>
+    ${can("search", true) ? `<div class="row"><button class="btn small" type="button" data-run="${row.id}">Run again</button><button class="btn small secondary" type="button" data-del="${row.id}">Delete</button></div>` : ""}</div>`).join("")
+    + (runs.length ? `<div class="muted" style="margin-top:8px">Latest run: ${esc(runs[0].provider)} · ${runs[0].created_count} new · ${runs[0].duplicate_count} duplicates</div>` : "");
+  if (!saved.length) $("s-list").innerHTML = `<div class="muted">No saved profiles yet.</div>`;
+  $("s-list").querySelectorAll("[data-run]").forEach((button) => button.addEventListener("click", () => runSearch(button.dataset.run)));
+  $("s-list").querySelectorAll("[data-del]").forEach((button) => button.addEventListener("click", async () => {
+    await api("/api/search/criteria/" + button.dataset.del, {method: "DELETE"});
+    loadSearch();
+  }));
+}
+async function runSearch(id) {
+  const result = await api("/api/search/criteria/" + id + "/run", {method: "POST"});
+  $("s-result").innerHTML = `<div class="note">Provider <b>${esc(result.provider)}</b>. Saved ${result.created_count} new lead${result.created_count === 1 ? "" : "s"} and skipped ${result.duplicate_count} duplicate${result.duplicate_count === 1 ? "" : "s"}.</div>`;
+  toast("Search finished");
+  loadSearch();
+}
+$("s-save").addEventListener("click", async () => {
+  $("s-error").textContent = "";
+  try {
+    const saved = await api("/api/search/criteria", {method: "POST", body: {
+      name: $("s-name").value, industry: $("s-industry").value, keywords: $("s-keywords").value, company_size: $("s-size").value,
+      country: $("s-country").value, state: $("s-state").value, district: $("s-district").value, city: $("s-city").value,
+      postal_code: $("s-postal").value, results_limit: Number($("s-limit").value || 10),
+    }});
+    await runSearch(saved.id);
+  } catch (error) { $("s-error").textContent = error.message; }
+});
+
+async function loadApis() {
+  const data = await api("/api/providers");
+  $("key-rows").innerHTML = data.keys.map((row) => `<tr><td>${esc(row.provider)}</td><td>${row.configured ? esc(row.source) : "Not set"}</td><td>${esc(row.hint || "—")}</td><td>${row.database_copy && can("apikeys", true) ? `<button class="btn small secondary" type="button" data-forget="${esc(row.provider)}">Remove saved key</button>` : ""}</td></tr>`).join("");
+  $("key-rows").querySelectorAll("[data-forget]").forEach((button) => button.addEventListener("click", async () => {
+    await api("/api/providers/keys/" + button.dataset.forget, {method: "DELETE"});
+    toast("Removed the saved copy");
+    loadApis();
+  }));
+  $("usage-list").innerHTML = data.usage.map((row) => `<div class="item"><b>${esc(row.provider)}</b>${row.enabled ? "Enabled" : "Disabled"} · today ${row.used_today}/${row.daily_quota} · month ${row.used_this_month}/${row.monthly_quota}</div>`).join("");
+}
+$("key-save").addEventListener("click", async () => {
+  try {
+    const saved = await api("/api/providers/keys", {method: "PUT", body: {provider: $("key-provider").value, api_key: $("key-value").value}});
+    $("key-value").value = "";
+    toast("Stored " + saved.hint);
+    loadApis();
+  } catch (error) { toast(error.message); }
+});
+$("acc-save").addEventListener("click", async () => {
+  try {
+    await api("/api/providers/access", {method: "PUT", body: {
+      provider: $("acc-provider").value, role: $("acc-role").value, enabled: $("acc-enabled").value === "true",
+      daily_quota: Number($("acc-daily").value), monthly_quota: Number($("acc-monthly").value),
+    }});
+    toast("Access updated");
+    loadApis();
+  } catch (error) { toast(error.message); }
+});
+
+async function loadAi() {
+  const data = await api("/api/ai/config");
+  $("ai-primary").value = data.primary_provider;
+  $("ai-model").value = data.primary_model || "";
+  $("ai-fallback").value = data.fallback_provider;
+  $("ai-temp").value = data.temperature;
+  $("ai-tokens").value = data.max_tokens;
+  $("ai-effective").textContent = `Effective provider: ${data.effective.provider} (${data.effective.model}). ${data.effective.note || ""}`;
+}
+$("ai-save").addEventListener("click", async () => {
+  try {
+    await api("/api/ai/config", {method: "PUT", body: {
+      primary_provider: $("ai-primary").value, primary_model: $("ai-model").value, fallback_provider: $("ai-fallback").value,
+      temperature: Number($("ai-temp").value), max_tokens: Number($("ai-tokens").value),
+    }});
+    toast("AI settings saved");
+    state.me = await api("/api/me");
+    applyAccess();
+    loadAi();
+  } catch (error) { toast(error.message); }
+});
+
+async function loadGeo() {
+  const data = await api("/api/geo");
+  $("g-country").value = data.country || "";
+  $("g-state").value = data.state || "";
+  $("g-district").value = data.district || "";
+  $("g-city").value = data.city || "";
+  $("g-postal").value = data.postal_code || "";
+  $("g-radius").value = data.radius_km ?? "";
+}
+$("g-save").addEventListener("click", async () => {
+  await api("/api/geo", {method: "PUT", body: {
+    country: $("g-country").value, state: $("g-state").value, district: $("g-district").value,
+    city: $("g-city").value, postal_code: $("g-postal").value, radius_km: $("g-radius").value,
+  }});
+  toast("Geographic target saved");
+});
+
+async function loadActivity() {
+  const [summary, events] = await Promise.all([api("/api/activity/summary"), api("/api/activity")]);
+  const cards = [["Activities today", summary.activities_today], ["API calls", summary.api_calls], ["Searches", summary.searches], ["Failed", summary.failed_requests]];
+  $("activity-stats").innerHTML = cards.map(([label, value]) => `<div class="card"><div class="label">${label}</div><div class="num">${value}</div></div>`).join("");
+  $("activity-list").innerHTML = events.map((event) => `<div class="activity"><div><b>${esc(event.email || "System")}</b><div class="label">${esc(event.action)}${event.module ? " · " + esc(event.module) : ""}${event.success ? "" : " · failed"}</div></div><span class="label">${esc(event.created_at ? new Date(event.created_at).toLocaleString() : "")}</span></div>`).join("") || `<div class="muted">No events yet.</div>`;
+}
+
+async function loadComments() {
+  const rows = await api("/api/comments");
+  $("comment-list").innerHTML = rows.length ? rows.map((row) => `<div class="item"><b>${esc(row.author_name || row.author_email)}</b>${esc(row.body)}<div class="muted">${esc(row.created_at ? new Date(row.created_at).toLocaleString() : "")}</div></div>`).join("") : `<div class="item"><b>No updates yet</b><span class="muted">Post the first workspace note.</span></div>`;
+}
+$("comment-save").addEventListener("click", async () => {
+  try {
+    await api("/api/comments", {method: "POST", body: {body: $("comment-body").value}});
+    $("comment-body").value = "";
+    toast("Posted");
+    loadComments();
+  } catch (error) { toast(error.message); }
+});
+
+async function loadSettings() {
+  const data = await api("/api/settings");
+  $("set-workspace").value = data.workspace_name;
+  $("set-product").value = data.product_name;
+  $("set-currency").value = data.currency;
+  $("set-retention").value = data.retention_days;
+  $("set-info").innerHTML = [
+    ["Workspace", data.workspace_name], ["Product", data.product_name], ["Authentication", data.authentication],
+    ["Database", data.database], ["Demo mode", data.demo_mode ? "On" : "Off"], ["Super Admin", data.super_admin],
+  ].map(([label, value]) => `<div class="item"><b>${esc(label)}</b>${esc(value)}</div>`).join("");
+}
+$("set-save").addEventListener("click", async () => {
+  await api("/api/settings", {method: "PUT", body: {
+    workspace_name: $("set-workspace").value, product_name: $("set-product").value,
+    currency: $("set-currency").value, retention_days: Number($("set-retention").value),
+  }});
+  toast("Settings saved");
+  loadSettings();
+});
+
+boot().catch((error) => { $("greeting").textContent = error.message; });
