@@ -382,7 +382,8 @@ def dashboard_preview(request: Request):
             if(!r.ok) throw new Error('Could not load requests');
             const rows=await r.json();
             if(!rows.length){host.textContent='No pending access requests.';return;}
-            host.innerHTML=rows.map(x=>'<div style="display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:12px 0;border-top:1px solid #e5e7eb"><div><b>'+escapeText(x.name)+'</b><div class="muted">'+escapeText(x.email)+'</div><div class="muted">Requested: '+escapeText(x.created_at)+'</div></div><div style="display:flex;gap:8px"><button class="btn" onclick="decideAccess('+x.id+',\'approve\')">Approve</button><button class="btn" style="background:#a4262c" onclick="decideAccess('+x.id+',\'reject\')">Reject</button></div></div>').join('');
+            host.innerHTML=rows.map(x=>'<div style="display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:12px 0;border-top:1px solid #e5e7eb"><div><b>'+escapeText(x.name)+'</b><div class="muted">'+escapeText(x.email)+'</div><div class="muted">Requested: '+escapeText(x.created_at)+'</div></div><div style="display:flex;gap:8px"><button class="btn" data-access-id="'+x.id+'" data-access-decision="approve">Approve</button><button class="btn" style="background:#a4262c" data-access-id="'+x.id+'" data-access-decision="reject">Reject</button></div></div>').join('');
+            host.querySelectorAll('button[data-access-id]').forEach(button=>button.addEventListener('click',()=>decideAccess(Number(button.dataset.accessId),button.dataset.accessDecision)));
           }catch(e){host.textContent=e.message;}
         }
         function escapeText(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
