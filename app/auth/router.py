@@ -2,11 +2,11 @@
 
 from pathlib import Path
 
-from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
+from app.auth.google import GoogleUnavailable, begin_google_login, complete_google_login, google_client
 from app.auth.service import client_ip, establish_identity, issue_session, revoke_request_session
 from app.core.config import get_settings
 from app.core.database import get_db
@@ -17,23 +17,6 @@ from app.search.providers import choose_search_provider
 
 router = APIRouter()
 WEB = Path(__file__).resolve().parents[1] / "web"
-
-_oauth = OAuth()
-
-
-def _google():
-    settings = get_settings()
-    if not settings.google_enabled:
-        return None
-    if "google" not in _oauth._clients:
-        _oauth.register(
-            name="google",
-            client_id=settings.google_client_id,
-            client_secret=settings.google_client_secret,
-            server_metadata_url=settings.google_discovery_url,
-            client_kwargs={"scope": "openid email profile"},
-        )
-    return _oauth.google
 
 
 def _set_session_cookie(response, raw_token: str):
@@ -92,21 +75,36 @@ def demo_login(body: dict, request: Request, db: Session = Depends(get_db)):
 
 @router.get("/auth/google/login")
 async def google_login(request: Request):
-    settings = get_settings()
-    google = _google()
-    if google is None:
+    if google_client() is None:
         return HTMLResponse(_page("Google sign-in is not configured", "Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET on the server, then restart LeadPilot."), status_code=503)
-    return await google.authorize_redirect(request, settings.redirect_uri(), code_challenge_method="S256")
+    try:
+        return await begin_google_login(request)
+    except GoogleUnavailable:
+        return HTMLResponse(
+            _page(
+                "Google sign-in is temporarily unavailable",
+                "LeadPilot could not reach Google to start sign-in. Please try again in a moment.",
+            ),
+            status_code=503,
+        )
 
 
 @router.get("/auth/google/callback")
 async def google_callback(request: Request, db: Session = Depends(get_db)):
-    google = _google()
+    google = google_client()
     if google is None:
         return HTMLResponse(_page("Google sign-in is not configured", "The OAuth client is missing on the server."), status_code=503)
     try:
-        token = await google.authorize_access_token(request)
+        token = await complete_google_login(request)
         userinfo = token.get("userinfo") or await google.userinfo(token=token)
+    except GoogleUnavailable:
+        return HTMLResponse(
+            _page(
+                "Google sign-in is temporarily unavailable",
+                "LeadPilot could not finish signing you in because Google did not respond. Please try again.",
+            ),
+            status_code=503,
+        )
     except Exception:
         request.session.clear()
         return HTMLResponse(_page("Google sign-in failed", "Please try again, or contact an administrator."), status_code=401)
