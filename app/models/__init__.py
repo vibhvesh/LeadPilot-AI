@@ -2,15 +2,19 @@
 
 from app.models.agents import AgentRun
 from app.models.audit import AuditEvent
+from app.models.bot import BotToken, DeepSearchRequest
 from app.models.identity import RolePermission, SessionToken, User, UserPermission
 from app.models.leads import LEAD_STATUSES, Comment, FollowUp, Lead
 from app.models.providers import LLMConfig, ProviderAccess, ProviderKey, ProviderUsage
-from app.models.search import SearchCriteria, SearchRun
+from app.models.search import AiSearchRun, SearchCriteria, SearchRun
 from app.models.workspace import WorkspaceSettings
 
 __all__ = [
     "AgentRun",
+    "AiSearchRun",
     "AuditEvent",
+    "BotToken",
+    "DeepSearchRequest",
     "Comment",
     "FollowUp",
     "LEAD_STATUSES",

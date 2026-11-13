@@ -392,7 +392,41 @@ async function loadSearch() {
     await api("/api/search/criteria/" + button.dataset.del, {method: "DELETE"});
     loadSearch();
   }));
+  await loadAiSearch();
 }
+function renderPlan(plan) {
+  if (!plan) return "";
+  const queries = (plan.queries || []).map((query) => `<div class="item">${esc(query)}</div>`).join("");
+  return `<div class="item"><b>Profile</b>${esc(plan.profile || "")}</div>
+    <div class="item"><b>Locations</b>${esc((plan.locations || []).join(", ") || "—")}</div>
+    <div class="item"><b>Signals</b>${esc((plan.signals || []).join(", ") || "—")}</div>
+    <div class="list">${queries}</div>`;
+}
+async function loadAiSearch() {
+  const [ai, deep] = await Promise.all([api("/api/search/ai"), api("/api/search/deep")]);
+  const counts = ai.sources || {};
+  $("source-counts").textContent = `Leads from the app: ${counts.app || 0} · Leads from Grok Bot: ${counts.grokbot || 0}`;
+  const latest = (ai.runs || [])[0];
+  if (latest) {
+    const sources = (latest.sources || []).slice(0, 6).map((source) => `<div class="item"><b>${esc(source.title || source.provider)}</b><div class="muted">${esc(source.provider)} · ${esc(source.url || "")}</div></div>`).join("");
+    $("ai-output").innerHTML = `<div class="note">Round ${latest.rounds}. Saved ${latest.created_count} lead${latest.created_count === 1 ? "" : "s"} and skipped ${latest.duplicate_count} duplicate${latest.duplicate_count === 1 ? "" : "s"}. Provider ${esc((latest.providers || []).join(", ") || "demo")}.</div>${renderPlan(latest.plan)}${sources}`;
+  }
+  $("deep-list").innerHTML = (deep || []).map((row) => `<div class="item"><b>${esc(row.status)}</b> ${esc(row.text)}<div class="muted">${row.lead_count} Grok Bot lead${row.lead_count === 1 ? "" : "s"} · webhook ${esc(row.webhook_status)}</div></div>`).join("") || "";
+}
+$("ai-run").addEventListener("click", async () => {
+  try {
+    const result = await api("/api/search/ai", {method: "POST", body: {text: $("ai-text").value}});
+    toast(`Saved ${result.created_count} leads`);
+    loadSearch();
+  } catch (error) { toast(error.message); }
+});
+$("ai-deep").addEventListener("click", async () => {
+  try {
+    const result = await api("/api/search/deep", {method: "POST", body: {text: $("ai-text").value}});
+    toast(result.webhook_status === "sent" ? "Grok Bot notified" : "Deep search queued");
+    loadSearch();
+  } catch (error) { toast(error.message); }
+});
 async function runSearch(id) {
   const result = await api("/api/search/criteria/" + id + "/run", {method: "POST"});
   $("s-result").innerHTML = `<div class="note">Provider <b>${esc(result.provider)}</b>. Saved ${result.created_count} new lead${result.created_count === 1 ? "" : "s"} and skipped ${result.duplicate_count} duplicate${result.duplicate_count === 1 ? "" : "s"}.</div>`;
@@ -505,6 +539,17 @@ async function loadSettings() {
   $("set-product").value = data.product_name;
   $("set-currency").value = data.currency;
   $("set-retention").value = data.retention_days;
+  $("set-seller").value = data.seller_name || "";
+  $("set-offering").value = data.offering || "";
+  $("set-customer").value = data.ideal_customer || "";
+  const tokens = await api("/api/settings/bot-tokens");
+  $("bot-tokens").innerHTML = tokens.map((token) => `<div class="item"><b>${esc(token.name)}</b> ${esc(token.hint)} · ${token.revoked ? "Revoked" : "Active"}
+    ${!token.revoked && can("settings", true) ? `<div><button class="btn small secondary" type="button" data-revoke="${token.id}">Revoke</button></div>` : ""}</div>`).join("") || `<div class="muted">No bot tokens yet.</div>`;
+  $("bot-tokens").querySelectorAll("[data-revoke]").forEach((button) => button.addEventListener("click", async () => {
+    await api("/api/settings/bot-tokens/" + button.dataset.revoke, {method: "DELETE"});
+    toast("Token revoked");
+    loadSettings();
+  }));
   $("set-info").innerHTML = [
     ["Workspace", data.workspace_name], ["Product", data.product_name], ["Authentication", data.authentication],
     ["Database", data.database], ["Demo mode", data.demo_mode ? "On" : "Off"], ["Super Admin", data.super_admin],
@@ -513,10 +558,22 @@ async function loadSettings() {
 $("set-save").addEventListener("click", async () => {
   await api("/api/settings", {method: "PUT", body: {
     workspace_name: $("set-workspace").value, product_name: $("set-product").value,
+    seller_name: $("set-seller").value, offering: $("set-offering").value, ideal_customer: $("set-customer").value,
     currency: $("set-currency").value, retention_days: Number($("set-retention").value),
   }});
   toast("Settings saved");
   loadSettings();
+});
+
+$("bot-create").addEventListener("click", async () => {
+  try {
+    const created = await api("/api/settings/bot-tokens", {method: "POST", body: {name: $("bot-name").value}});
+    const box = $("bot-once");
+    box.hidden = false;
+    box.textContent = "Copy this token now. It will not be shown again: " + created.token;
+    $("bot-name").value = "";
+    loadSettings();
+  } catch (error) { toast(error.message); }
 });
 
 boot().catch((error) => { $("greeting").textContent = error.message; });

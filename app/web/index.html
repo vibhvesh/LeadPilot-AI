@@ -148,7 +148,18 @@
   </section>
 
   <section id="search" class="page">
-    <div class="heading"><div><h1>Search criteria</h1><div class="muted">Describe who you want. A run collects companies, skips duplicates, and saves new leads.</div></div></div>
+    <div class="heading"><div><h1>Search criteria</h1><div class="muted">Describe who you want in plain language, or use a structured profile.</div></div></div>
+    <div class="card" style="margin-bottom:14px">
+      <h2>AI search</h2>
+      <div class="field"><label>Request</label><textarea id="ai-text" placeholder="Hospitals in Gujarat that use walkie-talkies and might buy Boondock Echo"></textarea></div>
+      <div class="row">
+        <button class="btn" type="button" id="ai-run" data-manage="search">Run AI search</button>
+        <button class="btn secondary" type="button" id="ai-deep" data-manage="search">Deep search with Grok Bot</button>
+      </div>
+      <p class="muted" id="source-counts"></p>
+      <div id="ai-output"></div>
+      <div class="list" id="deep-list" style="margin-top:12px"></div>
+    </div>
     <div class="grid2">
       <div class="card">
         <h2>Target profile</h2>
@@ -184,7 +195,7 @@
       </div>
       <div class="card">
         <h2>Who can use a provider</h2>
-        <div class="field"><label>Provider</label><select id="acc-provider"><option value="xai">xAI / Grok</option><option value="gemini">Gemini</option><option value="openai">OpenAI</option><option value="search">Web search</option><option value="mock">Demo mock</option></select></div>
+        <div class="field"><label>Provider</label><select id="acc-provider"><option value="xai">xAI / Grok</option><option value="gemini">Gemini</option><option value="openai">OpenAI</option><option value="search">Web search</option><option value="ai_search">AI search</option><option value="mock">Demo mock</option></select></div>
         <div class="field"><label>Role</label><select id="acc-role"><option value="member">Member</option><option value="admin">Admin</option><option value="super_admin">Super Admin</option></select></div>
         <div class="split3">
           <div class="field"><label>Daily quota</label><input id="acc-daily" type="number" value="25"></div>
@@ -266,9 +277,22 @@
         <div class="field"><label>Product name</label><input id="set-product"></div>
         <div class="field"><label>Currency</label><input id="set-currency"></div>
         <div class="field"><label>Retention (days)</label><input id="set-retention" type="number"></div>
+        <h2>Business profile</h2>
+        <div class="field"><label>Company name</label><input id="set-seller" placeholder="LinkTMS"></div>
+        <div class="field"><label>What we sell</label><textarea id="set-offering"></textarea></div>
+        <div class="field"><label>Ideal customer</label><input id="set-customer"></div>
         <button class="btn" type="button" id="set-save" data-manage="settings">Save settings</button>
       </div>
-      <div class="card"><h2>Platform</h2><div class="list" id="set-info"></div></div>
+      <div class="card">
+        <h2>Grok Bot tokens</h2>
+        <p class="muted">The raw token is shown once. The bot sends it as Authorization: Bearer.</p>
+        <div class="field"><label>Token name</label><input id="bot-name" placeholder="Production Grok Bot"></div>
+        <button class="btn" type="button" id="bot-create" data-manage="settings">Create token</button>
+        <div class="note" id="bot-once" hidden></div>
+        <div class="list" id="bot-tokens"></div>
+        <h2 style="margin-top:18px">Platform</h2>
+        <div class="list" id="set-info"></div>
+      </div>
     </div>
   </section>
   <div class="foot">CanberraAI LeadPilot · LinkTMS · TMS-LEAD</div>

@@ -23,7 +23,7 @@ def providers(db: Session = Depends(get_db), actor=Depends(require_module("apike
     catalog = provider_catalog(db)
     access = list_access(db)
     usage = []
-    for provider in ("xai", "gemini", "openai", "search", "mock"):
+    for provider in ("xai", "gemini", "openai", "search", "mock", "ai_search"):
         usage.append(usage_snapshot(db, actor, provider))
     return {
         "keys": catalog,

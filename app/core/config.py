@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     xai_model: str = "grok-3"
     gemini_model: str = "gemini-2.0-flash"
     openai_model: str = "gpt-4o-mini"
+    ai_search_max_rounds: int = 2
+    grokbot_webhook_url: str = ""
+    grokbot_webhook_secret: str = ""
 
     @property
     def super_admin(self) -> str:
