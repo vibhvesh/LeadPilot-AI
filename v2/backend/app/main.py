@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from redis import Redis
 from redis.exceptions import RedisError
 from sqlalchemy import text
@@ -10,6 +11,7 @@ from app.auth.router import router as auth_router
 from app.admin.router import router as admin_router
 
 app = FastAPI(title=settings.app_name, version="2.0.0")
+app.add_middleware(SessionMiddleware, secret_key=settings.session_secret, same_site="lax", https_only=settings.app_env.lower() == "production")
 origins = [x.strip() for x in settings.cors_origins.split(",") if x.strip()]
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True,
                    allow_methods=["GET", "POST", "PATCH", "DELETE"],
