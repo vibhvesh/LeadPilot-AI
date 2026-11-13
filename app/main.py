@@ -211,6 +211,16 @@ class LoginSession(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     revoked: Mapped[bool] = mapped_column(default=False)
 
+class AccessRequest(Base):
+    __tablename__ = "access_requests"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
+    display_name: Mapped[str] = mapped_column(String(250), default="")
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    reviewed_by: Mapped[Optional[str]] = mapped_column(String(320), nullable=True)
+
 Base.metadata.create_all(engine)
 app = FastAPI(
     title="CanberraAI Lead Generation System for TMS LLC",
@@ -258,7 +268,15 @@ async def require_google_login(request: Request, call_next):
         with SessionLocal() as db:
             record = db.get(LoginSession, _hash_session(raw_token))
             if record and not record.revoked and record.expires_at > datetime.now(timezone.utc):
-                user = {"email": record.email, "name": record.display_name, "role": record.role}
+                if record.role == "super_admin":
+                    user = {"email": record.email, "name": record.display_name, "role": record.role}
+                else:
+                    approval = db.scalar(select(AccessRequest).where(AccessRequest.email == record.email))
+                    if approval and approval.status == "approved":
+                        user = {"email": record.email, "name": record.display_name, "role": "member"}
+                    else:
+                        record.revoked = True
+                        db.commit()
     if not user:
         if path.startswith("/api/"):
             return JSONResponse({"detail": "Google sign-in required"}, status_code=401)
@@ -292,11 +310,28 @@ async def google_callback(request: Request):
 
     if email == SUPER_ADMIN_EMAIL:
         role = "super_admin"
-    elif email.endswith("@" + ALLOWED_WORKSPACE_DOMAIN) and hosted_domain == ALLOWED_WORKSPACE_DOMAIN:
-        role = "member"
     else:
-        request.session.clear()
-        return HTMLResponse("<h2>Access denied</h2><p>This Google account is not authorised for LeadPilot.</p>", status_code=403)
+        with SessionLocal() as db:
+            approval = db.scalar(select(AccessRequest).where(AccessRequest.email == email))
+            if approval is None:
+                approval = AccessRequest(email=email, display_name=str(userinfo.get("name", email)), status="pending")
+                db.add(approval)
+                db.commit()
+                return HTMLResponse(
+                    "<h2>Access request submitted</h2><p>Your Google account is awaiting approval from the LeadPilot administrator.</p><p>You can close this page. Try signing in again after approval.</p>",
+                    status_code=202,
+                )
+            approval.display_name = str(userinfo.get("name", email))
+            if approval.status == "pending":
+                db.commit()
+                return HTMLResponse(
+                    "<h2>Approval pending</h2><p>Your access request is waiting for approval from the LeadPilot administrator.</p>",
+                    status_code=202,
+                )
+            if approval.status != "approved":
+                request.session.clear()
+                return HTMLResponse("<h2>Access not approved</h2><p>The LeadPilot administrator has not approved this account.</p>", status_code=403)
+            db.commit()
 
     raw_token = secrets.token_urlsafe(48)
     expires_at = datetime.now(timezone.utc) + timedelta(seconds=SESSION_MAX_AGE)
@@ -332,6 +367,33 @@ def dashboard_preview(request: Request):
     account = html.escape(request.state.user["email"])
     logout = '<form method="post" action="/auth/logout" style="display:inline"><button class="btn" type="submit">Sign out</button></form>'
     page = DASHBOARD_HTML.replace('<div class="pill">DEMO PREVIEW · SAMPLE DATA</div>', f'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="pill">Signed in: {account}</div>{logout}</div>')
+    if request.state.user["role"] == "super_admin":
+        admin_panel = """
+        <section id="approvalPanel" class="setting-card" style="margin:18px 0">
+          <h3>Access requests <span class="pending">Super Admin</span></h3>
+          <p class="setting-help">Review Google accounts requesting access to LeadPilot.</p>
+          <div id="accessRequests">Loading requests…</div>
+        </section>
+        <script>
+        async function loadAccessRequests(){
+          const host=document.getElementById('accessRequests');
+          try{
+            const r=await fetch('/api/admin/access-requests');
+            if(!r.ok) throw new Error('Could not load requests');
+            const rows=await r.json();
+            if(!rows.length){host.textContent='No pending access requests.';return;}
+            host.innerHTML=rows.map(x=>'<div style="display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:12px 0;border-top:1px solid #e5e7eb"><div><b>'+escapeText(x.name)+'</b><div class="muted">'+escapeText(x.email)+'</div><div class="muted">Requested: '+escapeText(x.created_at)+'</div></div><div style="display:flex;gap:8px"><button class="btn" onclick="decideAccess('+x.id+',\'approve\')">Approve</button><button class="btn" style="background:#a4262c" onclick="decideAccess('+x.id+',\'reject\')">Reject</button></div></div>').join('');
+          }catch(e){host.textContent=e.message;}
+        }
+        function escapeText(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+        async function decideAccess(id,decision){
+          const r=await fetch('/api/admin/access-requests/'+id+'/decision',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({decision})});
+          if(!r.ok){alert('Unable to update access request');return;}
+          loadAccessRequests();
+        }
+        loadAccessRequests();
+        </script>"""
+        page = page.replace('<div class="footer">', admin_panel + '<div class="footer">')
     return HTMLResponse(page)
 
 def db_session():
@@ -370,6 +432,35 @@ class NoteIn(BaseModel):
 class FeedbackIn(BaseModel):
     decision: str = Field(pattern="^(accept|reject|incorrect|duplicate)$")
     reason: str = ""
+
+class AccessDecision(BaseModel):
+    decision: str = Field(pattern="^(approve|reject)$")
+
+@app.get("/api/admin/access-requests")
+def list_access_requests(request: Request, db: Session = Depends(db_session)):
+    user = getattr(request.state, "user", None)
+    if not user or user.get("role") != "super_admin":
+        raise HTTPException(403, "Super Admin access required")
+    rows = db.scalars(select(AccessRequest).where(AccessRequest.status == "pending").order_by(AccessRequest.created_at.asc())).all()
+    return [{"id": x.id, "email": x.email, "name": x.display_name, "created_at": x.created_at.isoformat()} for x in rows]
+
+@app.post("/api/admin/access-requests/{request_id}/decision")
+def decide_access_request(request_id: int, body: AccessDecision, request: Request, db: Session = Depends(db_session)):
+    user = getattr(request.state, "user", None)
+    if not user or user.get("role") != "super_admin":
+        raise HTTPException(403, "Super Admin access required")
+    item = db.get(AccessRequest, request_id)
+    if not item:
+        raise HTTPException(404, "Access request not found")
+    item.status = "approved" if body.decision == "approve" else "rejected"
+    item.reviewed_at = datetime.now(timezone.utc)
+    item.reviewed_by = user["email"]
+    if body.decision == "reject":
+        sessions = db.scalars(select(LoginSession).where(LoginSession.email == item.email)).all()
+        for session in sessions:
+            session.revoked = True
+    db.commit()
+    return {"id": item.id, "status": item.status}
 
 @app.get("/api/leads", dependencies=[Depends(require_admin)])
 def list_leads(db: Session = Depends(db_session)):
