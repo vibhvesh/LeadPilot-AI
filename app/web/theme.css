@@ -1,0 +1,125 @@
+/* Shared azure tokens and the non-select controls. */
+:root {
+  --ink: #172033;
+  --muted: #68758b;
+  --line: #d5e2f0;
+  --bg: #f4f6fa;
+  --card: #fff;
+  --blue: #2563eb;
+  --blue-dark: #1d4ed8;
+  --azure: #eaf1ff;
+  --azure-strong: #d6e4ff;
+  --nav: #14213d;
+  --danger: #b42318;
+  --shadow: 0 12px 32px rgba(20, 33, 61, .16);
+  --radius: 10px;
+  --font: Inter, system-ui, "Segoe UI", Arial, sans-serif;
+  --focus: 0 0 0 3px rgba(37, 99, 235, .35);
+}
+
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+button:focus-visible, .azure-face:focus-visible, input:focus-visible, textarea:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+
+* { scrollbar-width: thin; scrollbar-color: #93b4f5 transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: #93b4f5; border-radius: 99px; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+button:not([class]) {
+  font: inherit;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--blue);
+  color: #fff;
+  padding: 10px 14px;
+  font-weight: 650;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+input[type="checkbox"], input[type="radio"] {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  border: 2px solid #b9c7df;
+  border-radius: 6px;
+  background: #fff;
+  display: inline-grid;
+  place-content: center;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+input[type="radio"] { border-radius: 50%; }
+input[type="checkbox"]:checked, input[type="radio"]:checked {
+  background: var(--blue);
+  border-color: var(--blue);
+}
+input[type="checkbox"]:checked::after {
+  content: "";
+  width: 5px;
+  height: 9px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  margin-top: -2px;
+}
+input[type="radio"]:checked::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+}
+input[type="checkbox"].azure-toggle {
+  width: 44px;
+  height: 26px;
+  border-radius: 99px;
+  position: relative;
+}
+input[type="checkbox"].azure-toggle::after {
+  content: "";
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(20, 33, 61, .25);
+  transform: none;
+  margin: 0;
+}
+input[type="checkbox"].azure-toggle:checked::after { margin-left: 16px; }
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button { appearance: none; margin: 0; }
+input[type="number"] { appearance: textfield; }
+
+input[type="range"] {
+  accent-color: var(--blue);
+  width: 100%;
+  height: 28px;
+}
+
+input[type="file"] { font: inherit; color: var(--ink); }
+input[type="file"]::file-selector-button {
+  font: inherit;
+  margin-right: 10px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--azure);
+  color: var(--blue-dark);
+  padding: 8px 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+input[type="date"], input[type="time"], input[type="datetime-local"] {
+  font: inherit;
+  color: var(--ink);
+  accent-color: var(--blue);
+  color-scheme: light;
+  min-height: 44px;
+}

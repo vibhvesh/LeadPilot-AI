@@ -313,7 +313,9 @@
 
   async function deleteEditor() {
     const id = $("preset-pick").value;
-    if (!id || !confirm("Delete this preset?")) return;
+    if (!id) return;
+    const yes = window.AzureDialog ? await AzureDialog.confirm("Delete this preset?", {confirmLabel: "Delete"}) : false;
+    if (!yes) return;
     try {
       await api("/api/search/presets/" + id, {method: "DELETE"});
       toast("Preset deleted");
