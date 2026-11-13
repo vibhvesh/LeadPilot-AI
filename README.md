@@ -48,6 +48,25 @@ docker compose logs --tail=100 proxy
 curl -i https://leads.canberravision.com/health
 ```
 
+## Google sign-in setup
+
+The application requires Google sign-in for all browser pages and application API routes. The technical `/health` endpoint remains public for deployment health checks. The only permitted identities are:
+
+- `vibhvesh@gmail.com` — Super Admin; full access to the existing admin API.
+- Verified Google Workspace users in `linktms.com` — standard member access.
+
+Create a Google OAuth client in Google Cloud Console:
+
+1. Configure the OAuth consent screen / Google Auth Platform. Choose the audience appropriate for the LinkTMS Workspace; if the app remains in Testing, add the admin and tester accounts as test users.
+2. Create an OAuth client ID of type **Web application**.
+3. Add this exact Authorized redirect URI: `https://leads.canberravision.com/auth/google/callback`.
+4. Copy the Client ID and Client Secret into `/opt/leadpilot-ai/.env` on the VPS as `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+5. Restart the application: `cd /opt/leadpilot-ai && docker compose up -d --build`.
+
+Do not commit the client secret to GitHub. The app uses Google OpenID Connect with `openid email profile`, checks Google's verified email and Workspace hosted-domain claim, and stores hashed opaque application session tokens server-side. Sessions expire after the configured session lifetime; signing out revokes the session.
+
+After a successful deployment, visit `https://leads.canberravision.com`; it redirects to Google sign-in. The callback URI must match exactly.
+
 ## Current release status
 
 The dashboard is a navigation-enabled visual preview with sample records. The Leads, Follow-ups, Team and Settings sections are explanatory placeholders. Live lead CRUD is available only through development API endpoints protected by a temporary shared admin key. Google Workspace OIDC, verified domain onboarding, individual user approval, company-scoped RBAC, production session security, migrations and audit logging are not implemented yet. Do not enter real customer/candidate data until these controls are completed.
