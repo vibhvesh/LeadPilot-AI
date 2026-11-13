@@ -16,8 +16,8 @@
     const columns = data.columns || {};
     const max = Math.max(1, ...STATUSES.map((status) => counts[status] || 0));
     return STATUSES.map((status) => {
-      const cards = (columns[status] || []).map((lead) => `<a class="mini mini-link" href="${hrefForLead(lead.id)}"><b>${esc(lead.company)}</b><div class="muted">${esc(lead.region || lead.contact_name || "")}</div></a>`).join("");
-      return `<div class="col">
+      const cards = (columns[status] || []).map((lead) => `<a class="mini mini-link" draggable="false" data-preview-lead="${lead.id}" href="${hrefForLead(lead.id)}"><b>${esc(lead.company)}</b><div class="muted">${esc(lead.region || lead.contact_name || "")}</div></a>`).join("");
+      return `<div class="col" data-status="${esc(status)}">
         <a class="col-link" href="${hrefForStatus(status)}"><h3>${esc(status)} <span>${counts[status] || 0}</span></h3></a>
         <div class="bar"><i style="width:${Math.round(((counts[status] || 0) / max) * 100)}%"></i></div>
         ${cards || `<div class="muted">None</div>`}

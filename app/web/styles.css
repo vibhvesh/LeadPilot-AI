@@ -76,14 +76,25 @@ th{color:var(--muted);text-transform:uppercase;font-size:10px;letter-spacing:.6p
 .summary-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px}
 .summary-card h3{margin:0 0 8px;font-size:12px;letter-spacing:.4px;text-transform:uppercase;color:#536078}
 .summary-card h3 + h3{margin-top:12px}
-.summary-row{display:flex;justify-content:space-between;gap:12px;align-items:center;min-height:44px;border-top:1px solid var(--line);font-size:14px}
+.summary-row{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;min-height:44px;border-top:1px solid var(--line);font-size:14px}
 .summary-row span{color:var(--muted);font-size:12px;font-weight:700}
-.summary-row a,.summary-row b{text-align:right;word-break:break-word}
+.summary-row a,.summary-row b{text-align:left;max-width:100%;overflow-wrap:anywhere;word-break:break-word}
 .summary-row a{color:#1d4ed8;font-weight:700}
+.summary-link{display:block;max-width:100%;white-space:nowrap;overflow-x:auto;overflow-wrap:anywhere;word-break:break-all}
 .summary-missing{color:#8a94a6;font-weight:650}
 .summary-copy{margin:0;white-space:pre-wrap;line-height:1.45}
 .summary-chips{display:flex;flex-wrap:wrap;gap:6px}
 .summary-chip{background:#eaf1ff;color:#1d4ed8;border-radius:99px;padding:6px 10px;font-size:12px;font-weight:700}
+#lead-preview[hidden]{display:none !important}
+#lead-preview{position:fixed;inset:0;z-index:40}
+.preview-backdrop{position:absolute;inset:0;background:rgba(20,33,61,.46)}
+.preview-panel{position:absolute;top:0;right:0;width:min(460px,100%);height:100%;overflow:auto;background:#f4f6fa;box-shadow:-12px 0 32px rgba(20,33,61,.18);padding:16px 16px 28px}
+.preview-bar{display:flex;gap:8px;justify-content:space-between;position:sticky;top:0;z-index:1;background:#f4f6fa;padding-bottom:10px}
+.preview-bar .btn{min-height:44px}
+body.preview-open{overflow:hidden}
+@media(max-width:800px){
+  .preview-panel{left:0;width:100%;border-radius:0}
+}
 .steps{display:grid;gap:8px}
 .step{background:#fff;border:1px solid var(--line);border-left:3px solid var(--blue);border-radius:8px;padding:10px 12px}
 .banner{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#eaf1ff;border:1px solid #d5e2ff;border-radius:11px;padding:14px 16px;margin-bottom:16px}
