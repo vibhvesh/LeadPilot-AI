@@ -193,6 +193,40 @@ The chat shows **Add to pipeline** on each lead. That calls the normal lead crea
 
 Agent prompts and the outreach draft use **Settings → Business profile** (company name, what you sell, ideal customer). Until that is changed, the text stays the LinkTMS staffing pitch.
 
+## Install on a fresh Ubuntu or Debian server
+
+`deploy/install.sh` installs nginx, PostgreSQL, uv, and Python 3.12, then runs LeadPilot as the `leadpilot` user under systemd. It is safe to run again: keys already present in `/etc/leadpilot/leadpilot.env` are left as they are, and only missing keys are added.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/vibhvesh/LeadPilot-AI/main/deploy/install.sh | sudo bash
+```
+
+Pass flags after `-s --` when stdin is the script:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/vibhvesh/LeadPilot-AI/main/deploy/install.sh | sudo bash -s -- \
+  --domain leads.example.com \
+  --email admin@example.com \
+  --super-admin vibhvesh@gmail.com \
+  --demo-mode false \
+  --google-client-id YOUR_CLIENT_ID \
+  --google-client-secret YOUR_CLIENT_SECRET
+```
+
+Optional flags: `--xai-api-key`, `--gemini-api-key`, `--openai-api-key`, `--tavily-api-key`, `--brave-api-key`, `--search-api-key`, `--grokbot-webhook-url`, `--grokbot-webhook-secret`.
+
+From a checkout: `sudo bash deploy/install.sh` with the same flags. HTTPS is requested only when `--domain` is set, an email is available, and the domain resolves to this machine. If there is no global IPv6 route, IPv6 is disabled so outbound calls (Google sign-in, provider APIs) do not hang on an unreachable AAAA address.
+
+```bash
+sudo bash deploy/install.sh --upgrade      # pull main, install deps, apply schema, restart
+sudo bash deploy/install.sh --uninstall    # remove systemd and nginx, keep data
+sudo bash deploy/install.sh --uninstall --purge
+```
+
+The app listens on `127.0.0.1:8000` with one worker. nginx is the public listener. Schema updates run when the service starts and again during `--upgrade`.
+
+The older `bootstrap.sh` path (Docker and Caddy on a fixed host) is still in the repository. Use `deploy/install.sh` for a normal Ubuntu or Debian VPS.
+
 ## Deploy on Render
 
 `render.yaml` defines a Python web service and a Postgres database. Free Render Postgres expires after 30 days; change the database plan in the Blueprint if this should stay up.
