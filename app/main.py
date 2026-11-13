@@ -1,9 +1,13 @@
 import os
-from datetime import datetime, timezone
+import hashlib
+import secrets
+import html
+from datetime import datetime, timezone, timedelta
 from typing import Optional
-from fastapi import FastAPI, Depends, Header, HTTPException
-
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from authlib.integrations.starlette_client import OAuth
+from starlette.middleware.sessions import SessionMiddleware
 
 DASHBOARD_HTML = r"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -198,26 +202,149 @@ class Feedback(Base):
     decision: Mapped[str] = mapped_column(String(30))
     reason: Mapped[str] = mapped_column(Text, default="")
 
+class LoginSession(Base):
+    __tablename__ = "login_sessions"
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    email: Mapped[str] = mapped_column(String(320), index=True)
+    display_name: Mapped[str] = mapped_column(String(250), default="")
+    role: Mapped[str] = mapped_column(String(40), default="member")
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked: Mapped[bool] = mapped_column(default=False)
+
 Base.metadata.create_all(engine)
 app = FastAPI(
     title="CanberraAI Lead Generation System for TMS LLC",
-    version="0.1.0",
+    version="0.2.0",
     description="Recruitment sales lead intelligence and team collaboration"
 )
 
+SESSION_SECRET = os.environ.get("SESSION_SECRET", "")
+SESSION_COOKIE_NAME = os.environ.get("SESSION_COOKIE_NAME", "canberraai_session")
+SESSION_MAX_AGE = int(os.environ.get("SESSION_MAX_AGE_SECONDS", "28800"))
+SUPER_ADMIN_EMAIL = os.environ.get("SUPER_ADMIN_EMAIL", "vibhvesh@gmail.com").strip().lower()
+ALLOWED_WORKSPACE_DOMAIN = os.environ.get("ALLOWED_GOOGLE_WORKSPACE_DOMAIN", "linktms.com").strip().lower()
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "").strip()
+GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "https://leads.canberravision.com/auth/google/callback")
+
+if len(SESSION_SECRET) < 32:
+    raise RuntimeError("SESSION_SECRET must contain at least 32 characters.")
+
+app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, session_cookie="leadpilot_oidc", max_age=600, same_site="lax", https_only=True)
+
+oauth = OAuth()
+if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
+    oauth.register(
+        name="google",
+        client_id=GOOGLE_CLIENT_ID,
+        client_secret=GOOGLE_CLIENT_SECRET,
+        server_metadata_url=os.environ.get("GOOGLE_DISCOVERY_URL", "https://accounts.google.com/.well-known/openid-configuration"),
+        client_kwargs={"scope": "openid email profile"},
+    )
+
+PUBLIC_PATHS = {"/health", "/auth/google/login", "/auth/google/callback", "/auth/logout", "/favicon.ico"}
+
+def _hash_session(raw_token: str) -> str:
+    return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+
+@app.middleware("http")
+async def require_google_login(request: Request, call_next):
+    path = request.url.path
+    if path in PUBLIC_PATHS:
+        return await call_next(request)
+    raw_token = request.cookies.get(SESSION_COOKIE_NAME)
+    user = None
+    if raw_token:
+        with SessionLocal() as db:
+            record = db.get(LoginSession, _hash_session(raw_token))
+            if record and not record.revoked and record.expires_at > datetime.now(timezone.utc):
+                user = {"email": record.email, "name": record.display_name, "role": record.role}
+    if not user:
+        if path.startswith("/api/"):
+            return JSONResponse({"detail": "Google sign-in required"}, status_code=401)
+        return RedirectResponse(url="/auth/google/login", status_code=302)
+    request.state.user = user
+    return await call_next(request)
+
+@app.get("/auth/google/login")
+async def google_login(request: Request):
+    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+        return HTMLResponse("<h2>Google sign-in is not configured</h2><p>Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in the server .env file, then restart LeadPilot.</p>", status_code=503)
+    nonce = secrets.token_urlsafe(32)
+    request.session["oidc_nonce"] = nonce
+    return await oauth.google.authorize_redirect(request, GOOGLE_REDIRECT_URI, nonce=nonce, code_challenge_method="S256")
+
+@app.get("/auth/google/callback")
+async def google_callback(request: Request):
+    try:
+        token = await oauth.google.authorize_access_token(request)
+        userinfo = token.get("userinfo") or await oauth.google.userinfo(token=token)
+    except Exception:
+        request.session.clear()
+        return HTMLResponse("<h2>Google sign-in failed</h2><p>Please try again or contact the administrator.</p>", status_code=401)
+
+    email = str(userinfo.get("email", "")).strip().lower()
+    verified = userinfo.get("email_verified") is True or str(userinfo.get("email_verified", "")).lower() == "true"
+    hosted_domain = str(userinfo.get("hd", "")).strip().lower()
+    if not email or not verified:
+        request.session.clear()
+        return HTMLResponse("<h2>Access denied</h2><p>Google must confirm your email address.</p>", status_code=403)
+
+    if email == SUPER_ADMIN_EMAIL:
+        role = "super_admin"
+    elif email.endswith("@" + ALLOWED_WORKSPACE_DOMAIN) and hosted_domain == ALLOWED_WORKSPACE_DOMAIN:
+        role = "member"
+    else:
+        request.session.clear()
+        return HTMLResponse("<h2>Access denied</h2><p>This Google account is not authorised for LeadPilot.</p>", status_code=403)
+
+    raw_token = secrets.token_urlsafe(48)
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=SESSION_MAX_AGE)
+    with SessionLocal() as db:
+        db.add(LoginSession(token_hash=_hash_session(raw_token), email=email, display_name=str(userinfo.get("name", email)), role=role, expires_at=expires_at, revoked=False))
+        db.commit()
+
+    request.session.clear()
+    response = RedirectResponse(url="/", status_code=302)
+    response.set_cookie(SESSION_COOKIE_NAME, raw_token, max_age=SESSION_MAX_AGE, httponly=True, secure=True, samesite="lax", path="/")
+    return response
+
+@app.post("/auth/logout")
+async def google_logout(request: Request):
+    raw_token = request.cookies.get(SESSION_COOKIE_NAME)
+    if raw_token:
+        with SessionLocal() as db:
+            record = db.get(LoginSession, _hash_session(raw_token))
+            if record:
+                record.revoked = True
+                db.commit()
+    request.session.clear()
+    response = RedirectResponse(url="/auth/google/login", status_code=303)
+    response.delete_cookie(SESSION_COOKIE_NAME, path="/", secure=True, httponly=True, samesite="lax")
+    return response
+
+@app.get("/api/me")
+def who_am_i(request: Request):
+    return request.state.user
 
 @app.get("/", response_class=HTMLResponse)
-def dashboard_preview():
-    return DASHBOARD_HTML
+def dashboard_preview(request: Request):
+    account = html.escape(request.state.user["email"])
+    logout = '<form method="post" action="/auth/logout" style="display:inline"><button class="btn" type="submit">Sign out</button></form>'
+    page = DASHBOARD_HTML.replace('<div class="pill">DEMO PREVIEW · SAMPLE DATA</div>', f'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="pill">Signed in: {account}</div>{logout}</div>')
+    return HTMLResponse(page)
 
 def db_session():
     with SessionLocal() as db:
         yield db
 
-def require_admin(x_admin_key: Optional[str] = Header(default=None)):
-    expected = os.environ.get("ADMIN_API_KEY", "")
-    if not expected or x_admin_key != expected:
-        raise HTTPException(403, "Admin key required")
+def require_admin(request: Request):
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(401, "Google sign-in required")
+    if user.get("role") != "super_admin":
+        raise HTTPException(403, "Super Admin access required")
+    return user
 
 # Temporary development gate. Replace with authenticated user RBAC before production.
 @app.get("/health")
