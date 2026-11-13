@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 
 DISCOVERY_ATTEMPTS = 3
 RETRY_DELAY_SECONDS = 0.4
-DISCOVERY_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
+DISCOVERY_TIMEOUT = httpx.Timeout(20.0, connect=10.0)
 
 _oauth = OAuth()
 
@@ -58,8 +58,19 @@ async def begin_google_login(request):
 
 
 async def complete_google_login(request):
+    """Load Google's metadata with retries, then exchange the code once.
+
+    Authlib removes the saved state and PKCE verifier at the start of
+    ``authorize_access_token``. A second attempt cannot succeed, so a
+    transient token-endpoint error is reported instead of retried.
+    """
     client = google_client()
-    return await _call_with_retry(lambda: client.authorize_access_token(request))
+    await _call_with_retry(lambda: client.load_server_metadata())
+    try:
+        return await client.authorize_access_token(request)
+    except httpx.HTTPError as exc:
+        log.warning("Google token exchange failed (%s)", exc.__class__.__name__, exc_info=exc)
+        raise GoogleUnavailable("Google sign-in is temporarily unavailable") from exc
 
 
 async def _call_with_retry(operation):

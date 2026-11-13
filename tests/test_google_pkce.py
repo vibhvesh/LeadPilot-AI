@@ -108,6 +108,68 @@ def test_discovery_timeout_is_retried_then_returns_a_friendly_page(client, googl
     assert query["code_challenge"][0]
 
 
+def test_token_exchange_timeout_is_not_retried_and_returns_503(client, google_ready, monkeypatch):
+    _install_metadata(monkeypatch, lambda self: _successful_metadata(self))
+    start = client.get("/auth/google/login", follow_redirects=False)
+    query = parse_qs(urlparse(start.headers["location"]).query)
+    calls = {"count": 0}
+
+    async def fetch_access_token(self, redirect_uri=None, **kwargs):
+        calls["count"] += 1
+        raise httpx.ConnectTimeout("timed out")
+
+    monkeypatch.setattr(
+        "authlib.integrations.base_client.async_app.AsyncOAuth2Mixin.fetch_access_token",
+        fetch_access_token,
+    )
+    callback = client.get(
+        "/auth/google/callback",
+        params={"code": "auth-code", "state": query["state"][0]},
+        follow_redirects=False,
+    )
+    assert calls["count"] == 1
+    assert callback.status_code == 503
+    assert "try again" in callback.text.lower()
+    assert "Google sign-in failed" not in callback.text
+
+
+def test_callback_metadata_failure_is_retried(client, google_ready, monkeypatch):
+    _install_metadata(monkeypatch, lambda self: _successful_metadata(self))
+    start = client.get("/auth/google/login", follow_redirects=False)
+    query = parse_qs(urlparse(start.headers["location"]).query)
+    attempts = {"count": 0}
+
+    async def flaky(self):
+        attempts["count"] += 1
+        if attempts["count"] < 3:
+            raise httpx.ConnectTimeout("timed out")
+        await _successful_metadata(self)
+
+    _install_metadata(monkeypatch, flaky)
+
+    async def fetch_access_token(self, redirect_uri=None, **kwargs):
+        return {"access_token": "token", "token_type": "Bearer"}
+
+    async def userinfo(self, **kwargs):
+        return {"email": "retry.user@example.com", "email_verified": True, "name": "Retry User", "sub": "retry-sub"}
+
+    monkeypatch.setattr(
+        "authlib.integrations.base_client.async_app.AsyncOAuth2Mixin.fetch_access_token",
+        fetch_access_token,
+    )
+    monkeypatch.setattr(
+        "authlib.integrations.base_client.async_openid.AsyncOpenIDMixin.userinfo",
+        userinfo,
+    )
+    callback = client.get(
+        "/auth/google/callback",
+        params={"code": "auth-code", "state": query["state"][0]},
+        follow_redirects=False,
+    )
+    assert attempts["count"] >= 3
+    assert callback.status_code == 200
+
+
 def test_discovery_failure_does_not_return_500(client, google_ready, monkeypatch):
     async def always_down(self):
         raise httpx.ConnectTimeout("timed out")
