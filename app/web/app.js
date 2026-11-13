@@ -197,7 +197,7 @@ async function openLead(id) {
   state.selectedLead = id;
   const manage = can("leads", true);
   const options = LEAD_STATUSES.map((status) => `<option value="${esc(status)}" ${lead.status === status ? "selected" : ""}>${esc(status)}</option>`).join("");
-  $("lead-detail").innerHTML = `
+  $("lead-detail").innerHTML = `${window.LeadSummary ? LeadSummary.render(lead) : ""}
     <div class="note"><b>${esc(lead.company)}</b> ${esc(lead.qualification_summary || "Not scored yet.")}</div>
     <div class="split3">
       <div class="item"><b>Contact</b>${esc(lead.contact_name || "—")}<div class="muted">${esc(lead.email || "No email")} · ${esc(lead.phone || "No phone")}</div></div>
