@@ -1,13 +1,13 @@
 """Idempotent startup seed: Super Admin, role permissions, quotas, workspace."""
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.core.permissions import DEFAULT_ROLE_PERMISSIONS, MODULE_KEYS
 from app.models import LLMConfig, ProviderAccess, RolePermission, User, WorkspaceSettings
 
-PROVIDERS = ("xai", "gemini", "openai", "search", "mock", "ai_search")
+PROVIDERS = ("xai", "gemini", "openai", "search", "ai_search")
 
 
 def seed(db: Session, settings: Settings) -> None:
@@ -57,6 +57,7 @@ def ensure_role_permissions(db: Session) -> None:
 
 
 def ensure_provider_access(db: Session) -> None:
+    db.execute(delete(ProviderAccess).where(ProviderAccess.provider == "mock"))
     quotas = {
         "super_admin": (1000, 10000),
         "admin": (500, 5000),
@@ -101,5 +102,11 @@ def ensure_workspace(db: Session) -> None:
 
 
 def ensure_llm_config(db: Session) -> None:
-    if db.get(LLMConfig, 1) is None:
-        db.add(LLMConfig(id=1, primary_provider="auto", fallback_provider="mock"))
+    config = db.get(LLMConfig, 1)
+    if config is None:
+        db.add(LLMConfig(id=1, primary_provider="auto", fallback_provider=""))
+        return
+    if config.primary_provider == "mock":
+        config.primary_provider = "auto"
+    if config.fallback_provider == "mock":
+        config.fallback_provider = ""

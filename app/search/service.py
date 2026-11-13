@@ -77,8 +77,8 @@ def run_saved_search(db: Session, actor: User, criteria_id: int) -> dict:
         raise AppError("Search criteria not found", 404)
     from app.search.providers import choose_search_provider
 
-    selected, _key = choose_search_provider(db)
-    consume(db, actor, "search" if selected != "mock" else "mock", 1)
+    choose_search_provider(db)
+    consume(db, actor, "search", 1)
     provider, query, rows = search_companies(db, criteria)
     created = 0
     duplicates = 0

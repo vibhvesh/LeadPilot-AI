@@ -64,6 +64,21 @@ document.querySelectorAll(".tab").forEach((button) => button.addEventListener("c
 document.querySelectorAll("[data-jump]").forEach((button) => button.addEventListener("click", () => show(button.dataset.jump)));
 $("signout").addEventListener("click", async () => { await fetch("/auth/logout", {method: "POST"}); location.href = "/login"; });
 
+function missingProviders() {
+  const notes = [];
+  if (state.me && !state.me.search_provider) notes.push("No search provider configured. Add a Tavily or Brave key on API keys before running a search.");
+  if (state.me && !state.me.llm_provider) notes.push("No LLM provider configured. Add an xAI, Gemini, or OpenAI key before research, scoring, or outreach.");
+  return notes;
+}
+function showProviderStatus() {
+  const text = missingProviders().join(" ");
+  ["provider-status", "search-provider-status", "agent-provider-status", "ai-provider-status"].forEach((id) => {
+    const node = $(id);
+    if (!node) return;
+    node.hidden = !text;
+    node.textContent = text;
+  });
+}
 function applyAccess() {
   document.querySelectorAll(".tab").forEach((button) => { button.hidden = !can(TAB_MODULE[button.dataset.tab]); });
   document.querySelectorAll("[data-manage]").forEach((el) => { el.hidden = !can(el.dataset.manage, true); });
@@ -73,8 +88,11 @@ function applyAccess() {
   $("who-email").textContent = state.me.email;
   $("who-role").textContent = ROLE_LABEL[state.me.role] || state.me.role;
   $("greeting").textContent = greeting(state.me.name || state.me.email);
-  const live = state.me.llm_provider !== "mock" || state.me.search_provider !== "mock";
-  $("mode-pill").textContent = state.me.demo_mode && !live ? "DEMO MODE · LIVE DATABASE" : (live ? "LIVE PROVIDERS" : "WORKSPACE");
+  const bits = [];
+  if (state.me.demo_mode) bits.push("DEMO SIGN-IN");
+  if (state.me.llm_provider || state.me.search_provider) bits.push("LIVE PROVIDERS");
+  $("mode-pill").textContent = bits.join(" · ") || "WORKSPACE";
+  showProviderStatus();
   $("role-save").hidden = state.me.role !== "super_admin";
 }
 
@@ -285,7 +303,13 @@ $("agent-run").addEventListener("click", async () => {
     const run = await api("/api/agents/run", {method: "POST", body: {lead_id: leadId}});
     renderRun(run);
     toast(run.recommend_qualify ? "Scored. Ready for your review." : "Scored. Left as not qualified.");
-  } catch (error) { toast(error.message); }
+  } catch (error) {
+    $("agent-meta").textContent = error.message;
+    $("agent-steps").innerHTML = `<div class="muted">The pipeline did not run. No score or outreach draft was saved.</div>`;
+    $("draft-subject").value = "";
+    $("draft-body").textContent = error.message;
+    toast(error.message);
+  }
   finally { $("agent-run").disabled = false; }
 });
 async function reviewSelected(decision) {
@@ -410,7 +434,11 @@ async function loadAiSearch() {
   const latest = (ai.runs || [])[0];
   if (latest) {
     const sources = (latest.sources || []).slice(0, 6).map((source) => `<div class="item"><b>${esc(source.title || source.provider)}</b><div class="muted">${esc(source.provider)} · ${esc(source.url || "")}</div></div>`).join("");
-    $("ai-output").innerHTML = `<div class="note">Round ${latest.rounds}. Saved ${latest.created_count} lead${latest.created_count === 1 ? "" : "s"} and skipped ${latest.duplicate_count} duplicate${latest.duplicate_count === 1 ? "" : "s"}. Provider ${esc((latest.providers || []).join(", ") || "demo")}.</div>${renderPlan(latest.plan)}${sources}`;
+    const providers = (latest.providers || []).filter(Boolean).join(", ") || "none";
+    $("ai-output").innerHTML = `<div class="note">Round ${latest.rounds}. Saved ${latest.created_count} lead${latest.created_count === 1 ? "" : "s"} and skipped ${latest.duplicate_count} duplicate${latest.duplicate_count === 1 ? "" : "s"}. Provider ${esc(providers)}.</div>${renderPlan(latest.plan)}${sources}`;
+  } else {
+    const notes = missingProviders();
+    $("ai-output").innerHTML = notes.length ? notes.map((note) => `<div class="error">${esc(note)}</div>`).join("") : `<div class="muted">No AI searches yet.</div>`;
   }
   $("deep-list").innerHTML = (deep || []).map((row) => `<div class="item"><b>${esc(row.status)}</b> ${esc(row.text)}<div class="muted">${row.lead_count} Grok Bot lead${row.lead_count === 1 ? "" : "s"} · webhook ${esc(row.webhook_status)}</div></div>`).join("") || "";
 }
@@ -419,20 +447,36 @@ $("ai-run").addEventListener("click", async () => {
     const result = await api("/api/search/ai", {method: "POST", body: {text: $("ai-text").value}});
     toast(`Saved ${result.created_count} leads`);
     loadSearch();
-  } catch (error) { toast(error.message); }
+  } catch (error) {
+    $("ai-output").innerHTML = `<div class="error">${esc(error.message)}</div><div class="muted">No leads were saved.</div>`;
+    toast(error.message);
+  }
 });
 $("ai-deep").addEventListener("click", async () => {
   try {
     const result = await api("/api/search/deep", {method: "POST", body: {text: $("ai-text").value}});
     toast(result.webhook_status === "sent" ? "Grok Bot notified" : "Deep search queued");
     loadSearch();
-  } catch (error) { toast(error.message); }
+  } catch (error) {
+    $("ai-output").innerHTML = `<div class="error">${esc(error.message)}</div>`;
+    toast(error.message);
+  }
 });
 async function runSearch(id) {
-  const result = await api("/api/search/criteria/" + id + "/run", {method: "POST"});
-  $("s-result").innerHTML = `<div class="note">Provider <b>${esc(result.provider)}</b>. Saved ${result.created_count} new lead${result.created_count === 1 ? "" : "s"} and skipped ${result.duplicate_count} duplicate${result.duplicate_count === 1 ? "" : "s"}.</div>`;
-  toast("Search finished");
-  loadSearch();
+  $("s-error").textContent = "";
+  try {
+    const result = await api("/api/search/criteria/" + id + "/run", {method: "POST"});
+    const saved = Number(result.created_count || 0) + Number(result.duplicate_count || 0);
+    $("s-result").innerHTML = saved
+      ? `<div class="note">Provider <b>${esc(result.provider)}</b>. Saved ${result.created_count} new lead${result.created_count === 1 ? "" : "s"} and skipped ${result.duplicate_count} duplicate${result.duplicate_count === 1 ? "" : "s"}.</div>`
+      : `<div class="muted">The search returned no leads.</div>`;
+    toast("Search finished");
+    loadSearch();
+  } catch (error) {
+    $("s-error").textContent = error.message;
+    $("s-result").innerHTML = `<div class="muted">No leads were saved.</div>`;
+    toast(error.message);
+  }
 }
 $("s-save").addEventListener("click", async () => {
   $("s-error").textContent = "";

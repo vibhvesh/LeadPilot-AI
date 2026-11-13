@@ -78,7 +78,6 @@ def companies_from_pages(pages: list[dict], plan: dict) -> list[dict]:
 
 
 def extract_companies(db, user, pages: list[dict], plan: dict) -> list[dict]:
-    fallback_rows = companies_from_pages(pages, plan)
     if not pages:
         return []
     packed = []
@@ -98,11 +97,10 @@ def extract_companies(db, user, pages: list[dict], plan: dict) -> list[dict]:
             f"Locations: {plan.get('locations')}\nSignals: {plan.get('signals')}\n"
             f"Pages: {packed}"
         ),
-        fallback={"companies": fallback_rows},
     )
     raw_rows = result["data"].get("companies") if isinstance(result["data"], dict) else None
     if not isinstance(raw_rows, list) or not raw_rows:
-        return fallback_rows
+        return companies_from_pages(pages, plan)
     cleaned = []
     for row in raw_rows:
         if not isinstance(row, dict):

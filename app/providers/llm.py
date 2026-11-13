@@ -1,4 +1,4 @@
-"""Pluggable chat providers. Missing keys fall back to the deterministic mock."""
+"""Pluggable chat providers. A missing key or a failed call is reported, not replaced with sample text."""
 
 import json
 import re
@@ -17,8 +17,8 @@ DEFAULT_MODELS = {
     "xai": "grok-3",
     "gemini": "gemini-2.0-flash",
     "openai": "gpt-4o-mini",
-    "mock": "mock-leadpilot",
 }
+NO_LLM_PROVIDER = "No LLM provider configured"
 
 
 class LLMClient:
@@ -30,35 +30,15 @@ class LLMClient:
         self.provider, self.model, self.fallback_note = select_provider(db)
         self.config = db.get(LLMConfig, 1)
 
-    def complete_json(self, *, purpose: str, system: str, prompt: str, fallback: dict) -> dict:
-        if self.provider == "mock":
-            self._charge("mock")
-            record(
-                self.db,
-                user=self.user,
-                action="api_call",
-                module="ai",
-                target="mock",
-                detail={"purpose": purpose, "provider": "mock"},
-            )
-            return {"data": fallback, "provider": "mock", "model": self.model, "note": "Deterministic demo response"}
+    def complete_json(self, *, purpose: str, system: str, prompt: str) -> dict:
+        if not self.provider:
+            raise AppError(self.fallback_note or NO_LLM_PROVIDER)
         try:
             text = self._call(system, prompt)
             data = parse_json_object(text)
-            self._charge(self.provider)
-            record(
-                self.db,
-                user=self.user,
-                action="api_call",
-                module="ai",
-                target=self.provider,
-                detail={"purpose": purpose, "provider": self.provider, "model": self.model},
-            )
-            return {"data": data, "provider": self.provider, "model": self.model, "note": ""}
         except AppError:
             raise
         except Exception as exc:
-            self._charge("mock")
             record(
                 self.db,
                 user=self.user,
@@ -69,12 +49,17 @@ class LLMClient:
                 detail={"purpose": purpose, "error": exc.__class__.__name__},
                 note=str(exc)[:300],
             )
-            return {
-                "data": fallback,
-                "provider": "mock",
-                "model": "mock-leadpilot",
-                "note": f"{self.provider} was unavailable ({exc.__class__.__name__}); used the demo model",
-            }
+            raise AppError(f"{self.provider} request failed ({exc.__class__.__name__})") from exc
+        self._charge(self.provider)
+        record(
+            self.db,
+            user=self.user,
+            action="api_call",
+            module="ai",
+            target=self.provider,
+            detail={"purpose": purpose, "provider": self.provider, "model": self.model},
+        )
+        return {"data": data, "provider": self.provider, "model": self.model, "note": ""}
 
     def _charge(self, provider: str) -> None:
         consume(self.db, self.user, provider, 1)
@@ -102,16 +87,14 @@ def select_provider(db: Session) -> tuple[str, str, str]:
         for name in ("xai", "gemini", "openai"):
             if _has_key(db, settings, name):
                 return name, requested_model or _default_model(settings, name), ""
-        return "mock", "mock-leadpilot", "No provider key is configured"
-    if primary == "mock":
-        return "mock", "mock-leadpilot", ""
+        return "", "", NO_LLM_PROVIDER
     if primary in {"xai", "gemini", "openai"} and _has_key(db, settings, primary):
         return primary, requested_model or _default_model(settings, primary), ""
-    fallback = (config.fallback_provider if config else "mock") or "mock"
+    fallback = (config.fallback_provider if config else "") or ""
     if fallback in {"xai", "gemini", "openai"} and _has_key(db, settings, fallback):
         model = (config.fallback_model if config else "") or _default_model(settings, fallback)
         return fallback, model, f"{primary} has no key; using {fallback}"
-    return "mock", "mock-leadpilot", f"{primary} has no key; using the demo model"
+    return "", "", NO_LLM_PROVIDER
 
 
 def provider_catalog(db: Session) -> list[dict]:

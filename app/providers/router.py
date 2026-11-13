@@ -23,7 +23,7 @@ def providers(db: Session = Depends(get_db), actor=Depends(require_module("apike
     catalog = provider_catalog(db)
     access = list_access(db)
     usage = []
-    for provider in ("xai", "gemini", "openai", "search", "mock", "ai_search"):
+    for provider in ("xai", "gemini", "openai", "search", "ai_search"):
         usage.append(usage_snapshot(db, actor, provider))
     return {
         "keys": catalog,
@@ -81,9 +81,8 @@ def get_ai(db: Session = Depends(get_db), _user=Depends(require_module("ai"))):
 def put_ai(body: dict, db: Session = Depends(get_db), actor=Depends(require_module("ai", manage=True))):
     config = _config(db)
     primary = str(body.get("primary_provider") or "auto").strip().lower()
-    fallback = str(body.get("fallback_provider") or "mock").strip().lower()
-    allowed = {"auto", "mock", "xai", "gemini", "openai"}
-    if primary not in allowed or fallback not in allowed:
+    fallback = str(body.get("fallback_provider") or "").strip().lower()
+    if primary not in {"auto", "xai", "gemini", "openai"} or fallback not in {"", "xai", "gemini", "openai"}:
         from app.core.errors import AppError
 
         raise AppError("Unknown model provider")
@@ -107,7 +106,7 @@ def put_ai(body: dict, db: Session = Depends(get_db), actor=Depends(require_modu
 def _config(db: Session) -> LLMConfig:
     config = db.get(LLMConfig, 1)
     if config is None:
-        config = LLMConfig(id=1, primary_provider="auto", fallback_provider="mock")
+        config = LLMConfig(id=1, primary_provider="auto", fallback_provider="")
         db.add(config)
         db.flush()
     return config

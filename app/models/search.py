@@ -50,7 +50,7 @@ class SearchRun(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     criteria_id: Mapped[int | None] = mapped_column(ForeignKey("search_criteria.id"), nullable=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    provider: Mapped[str] = mapped_column(String(40), default="mock")
+    provider: Mapped[str] = mapped_column(String(40), default="")
     query: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(20), default="completed")
     fetched: Mapped[int] = mapped_column(Integer, default=0)

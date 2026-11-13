@@ -52,7 +52,7 @@ class LLMConfig(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     primary_provider: Mapped[str] = mapped_column(String(40), default="auto")
     primary_model: Mapped[str] = mapped_column(String(120), default="")
-    fallback_provider: Mapped[str] = mapped_column(String(40), default="mock")
+    fallback_provider: Mapped[str] = mapped_column(String(40), default="")
     fallback_model: Mapped[str] = mapped_column(String(120), default="")
     temperature: Mapped[float] = mapped_column(Float, default=0.2)
     max_tokens: Mapped[int] = mapped_column(Integer, default=1200)

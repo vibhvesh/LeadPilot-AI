@@ -2,8 +2,10 @@
 
 import httpx
 
-from app.ai_search.planner import fallback_plan, make_plan, normalize_plan
+from app.ai_search.planner import make_plan, normalize_plan
 from app.core.config import get_settings
+from app.core.errors import AppError
+from tests.fakes import install_fake_llm
 from tests.helpers import login
 
 
@@ -24,7 +26,7 @@ def test_planner_normalizes_a_mocked_llm_plan(monkeypatch):
                     "profile": "Hospitals that may buy Boondock Echo",
                     "locations": ["Gujarat"],
                     "signals": ["walkie-talkies"],
-                    "queries": ["hospitals Gujarat radios", "Boondock Echo buyers"],
+                    "queries": ["hospitals Gujarat radios", "Boondock Echo buyers", "hospital radio suppliers"],
                 },
                 "provider": "mock",
                 "model": "test",
@@ -38,15 +40,63 @@ def test_planner_normalizes_a_mocked_llm_plan(monkeypatch):
     assert "walkie-talkies" in plan["signals"]
     assert 3 <= len(plan["queries"]) <= 8
     assert plan["queries"][0] == "hospitals Gujarat radios"
-    padded = normalize_plan({"queries": ["only one"]}, "clinics in Gujarat")
-    assert len(padded["queries"]) >= 3
-    capped = normalize_plan({"queries": [f"query {index}" for index in range(12)]}, "clinics")
+    kept = normalize_plan({"profile": "Clinics", "queries": ["only one"]}, "clinics in Gujarat")
+    assert kept["queries"] == ["only one"]
+    capped = normalize_plan({"profile": "Clinics", "queries": [f"query {index}" for index in range(12)]}, "clinics")
     assert len(capped["queries"]) == 8
-    assert len(fallback_plan("labs").get("queries")) >= 3
+    try:
+        normalize_plan({"queries": []}, "clinics")
+    except AppError as exc:
+        assert "search plan" in str(exc)
+    else:
+        raise AssertionError("an empty plan should be reported")
+
+
+def test_ai_search_without_a_search_provider_saves_nothing(client, monkeypatch):
+    install_fake_llm(monkeypatch)
+    _admin(client)
+    response = client.post("/api/search/ai", json={"text": "hospitals in Gujarat that use walkie-talkies"})
+    assert response.status_code == 400
+    assert response.json()["detail"] == "No search provider configured"
+    assert client.get("/api/leads").json() == []
 
 
 def test_ai_search_saves_scored_leads_and_respects_quota(client, monkeypatch):
+    install_fake_llm(monkeypatch)
     _admin(client)
+
+    def several(_db, query, limit=5):
+        return [
+            {
+                "company": "City Hospital",
+                "contact_name": "Asha",
+                "email": "asha@cityhospital.example",
+                "website": "https://cityhospital.example",
+                "source_url": "https://cityhospital.example/team",
+                "snippet": "City Hospital uses radios.",
+                "search_provider": "tavily",
+                "city": "Ahmedabad",
+                "state": "Gujarat",
+                "country": "India",
+            },
+            {
+                "company": "River Clinic",
+                "email": "desk@riverclinic.example",
+                "website": "https://riverclinic.example",
+                "source_url": "https://riverclinic.example",
+                "snippet": "River Clinic procurement.",
+                "search_provider": "tavily",
+            },
+            {
+                "company": "Hill Medical",
+                "website": "https://hillmedical.example",
+                "source_url": "https://hillmedical.example",
+                "snippet": "Hill Medical wards.",
+                "search_provider": "brave",
+            },
+        ]
+
+    monkeypatch.setattr("app.ai_search.runner.search_query", several)
     first = client.post("/api/search/ai", json={"text": "hospitals in Gujarat that use walkie-talkies"})
     assert first.status_code == 200
     body = first.json()
@@ -72,7 +122,7 @@ def test_ai_search_saves_scored_leads_and_respects_quota(client, monkeypatch):
             "website": "https://onlyclinic.example",
             "source_url": "https://onlyclinic.example/team",
             "snippet": "Only Clinic uses radios. asha@onlyclinic.example",
-            "search_provider": "mock",
+            "search_provider": "tavily",
             "city": "Ahmedabad",
             "state": "Gujarat",
             "country": "India",
@@ -96,7 +146,8 @@ def test_ai_search_saves_scored_leads_and_respects_quota(client, monkeypatch):
     assert blocked.status_code == 429
 
 
-def test_business_profile_is_used_in_the_outreach_draft(client):
+def test_business_profile_is_used_in_the_outreach_draft(client, monkeypatch):
+    install_fake_llm(monkeypatch)
     _admin(client)
     saved = client.put("/api/settings", json={
         "seller_name": "Boondock",
@@ -117,6 +168,7 @@ def test_business_profile_is_used_in_the_outreach_draft(client):
 
 
 def test_bot_token_auth_leads_and_webhook(client, monkeypatch):
+    install_fake_llm(monkeypatch)
     _admin(client)
     monkeypatch.setenv("GROKBOT_WEBHOOK_URL", "https://bot.example/hook")
     monkeypatch.setenv("GROKBOT_WEBHOOK_SECRET", "sekret")
@@ -220,6 +272,7 @@ def test_bot_token_auth_leads_and_webhook(client, monkeypatch):
 
 
 def test_webhook_failure_still_queues_the_request(client, monkeypatch):
+    install_fake_llm(monkeypatch)
     _admin(client)
     monkeypatch.setenv("GROKBOT_WEBHOOK_URL", "https://bot.example/hook")
     get_settings.cache_clear()

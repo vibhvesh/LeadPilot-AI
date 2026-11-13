@@ -1,4 +1,18 @@
+from app.search.providers import NO_SEARCH_PROVIDER, active_search_backends
+from tests.fakes import install_fake_llm, install_fake_search
 from tests.helpers import login
+
+NORTHSTAR = {
+    "company": "Northstar Logistics",
+    "contact_name": "Alex Morgan",
+    "email": "alex@northstar.example",
+    "website": "https://northstar.example",
+    "country": "United States",
+    "state": "California",
+    "source": "tavily",
+    "source_url": "https://northstar.example",
+    "industry": "logistics",
+}
 
 
 def _admin(client):
@@ -7,7 +21,8 @@ def _admin(client):
     return response
 
 
-def test_search_creates_leads_and_second_run_dedupes(client):
+def test_search_creates_leads_and_second_run_dedupes(client, monkeypatch):
+    install_fake_search(monkeypatch, [NORTHSTAR])
     _admin(client)
     saved = client.post("/api/search/criteria", json={
         "name": "US logistics",
@@ -22,7 +37,7 @@ def test_search_creates_leads_and_second_run_dedupes(client):
     first = client.post(f"/api/search/criteria/{criteria_id}/run")
     assert first.status_code == 200
     body = first.json()
-    assert body["provider"] == "mock"
+    assert body["provider"] == "tavily"
     assert body["created_count"] >= 1
     assert body["duplicate_count"] == 0
     second = client.post(f"/api/search/criteria/{criteria_id}/run")
@@ -34,8 +49,16 @@ def test_search_creates_leads_and_second_run_dedupes(client):
     assert all(lead["status"] == "New" for lead in leads)
 
 
-def test_unknown_profile_still_returns_stable_demo_leads(client):
+def test_search_without_a_provider_saves_nothing(client):
     _admin(client)
+    from app.core.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        assert active_search_backends(db) == []
+        assert "mock" not in active_search_backends(db)
+    finally:
+        db.close()
     saved = client.post("/api/search/criteria", json={
         "name": "Widgets",
         "industry": "specialty-widgets",
@@ -45,14 +68,14 @@ def test_unknown_profile_still_returns_stable_demo_leads(client):
         "results_limit": 5,
     })
     criteria_id = saved.json()["id"]
-    first = client.post(f"/api/search/criteria/{criteria_id}/run").json()
-    assert first["created_count"] == 5
-    again = client.post(f"/api/search/criteria/{criteria_id}/run").json()
-    assert again["created_count"] == 0
-    assert again["duplicate_count"] == 5
+    response = client.post(f"/api/search/criteria/{criteria_id}/run")
+    assert response.status_code == 400
+    assert response.json()["detail"] == NO_SEARCH_PROVIDER
+    assert client.get("/api/leads").json() == []
 
 
-def test_pipeline_scores_without_qualifying_until_review(client):
+def test_pipeline_scores_without_qualifying_until_review(client, monkeypatch):
+    install_fake_llm(monkeypatch)
     _admin(client)
     created = client.post("/api/leads", json={
         "company": "Harbour Test Co",
@@ -75,7 +98,7 @@ def test_pipeline_scores_without_qualifying_until_review(client):
     assert body["delivery"] == "draft"
     assert body["outreach"]["delivery"] == "draft"
     assert "draft" in body["outreach"]["body"].lower()
-    assert isinstance(body["score"], int)
+    assert body["score"] == 72
     assert body["lead_status"] in (None, "New")
     agents = [step["agent"] for step in body["steps"]]
     assert agents[:6] == ["orchestrator", "research", "enrichment", "quality", "qualification", "outreach"]
@@ -87,6 +110,17 @@ def test_pipeline_scores_without_qualifying_until_review(client):
     assert review.json()["status"] == "Qualified"
     assert review.json()["human_reviewed"] is True
     assert client.post("/api/agents/send", json={"lead_id": lead_id}).status_code == 404
+
+
+def test_pipeline_without_a_model_returns_an_error(client):
+    _admin(client)
+    created = client.post("/api/leads", json={"company": "No Model Co", "website": "https://nomodel.example"})
+    run = client.post("/api/agents/run", json={"lead_id": created.json()["id"]})
+    assert run.status_code == 400
+    assert run.json()["detail"] == "No LLM provider configured"
+    current = client.get(f"/api/leads/{created.json()['id']}").json()
+    assert current["score"] is None
+    assert current["status"] == "New"
 
 
 def test_dashboard_and_activity_use_database_counts(client):
@@ -129,7 +163,8 @@ def test_provider_key_is_stored_encrypted_and_not_returned(client):
         db.close()
 
 
-def test_quota_blocks_the_next_search(client):
+def test_quota_blocks_the_next_search(client, monkeypatch):
+    install_fake_search(monkeypatch, [NORTHSTAR])
     _admin(client)
     login(client, "scout@example.com", "Scout")
     login(client, "vibhvesh@gmail.com", "Vibhvesh")
@@ -137,7 +172,7 @@ def test_quota_blocks_the_next_search(client):
     scout = next(user for user in users if user["email"] == "scout@example.com")
     client.post(f"/api/users/{scout['id']}/decision", json={"decision": "approve"})
     access = client.put("/api/providers/access", json={
-        "provider": "mock",
+        "provider": "search",
         "role": "member",
         "enabled": True,
         "daily_quota": 1,
