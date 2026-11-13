@@ -1,5 +1,6 @@
 """Sign-in routes for Google and the local demo identity."""
 
+import logging
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
@@ -18,6 +19,7 @@ from app.search.providers import choose_search_provider
 
 router = APIRouter()
 WEB = Path(__file__).resolve().parents[1] / "web"
+log = logging.getLogger(__name__)
 
 
 def _set_session_cookie(response, raw_token: str):
@@ -107,6 +109,7 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
             status_code=503,
         )
     except Exception:
+        log.exception("Google sign-in failed")
         request.session.clear()
         return HTMLResponse(_page("Google sign-in failed", "Please try again, or contact an administrator."), status_code=401)
     email = str(userinfo.get("email") or "").strip().lower()
