@@ -39,6 +39,11 @@
     root.hidden = false;
     document.body.classList.add("preview-open");
     document.getElementById("preview-close").focus();
+    document.dispatchEvent(new CustomEvent("leadpilot:mascot", {detail: {
+      text: "Here's the summary!",
+      selector: "#lead-preview .preview-panel",
+      href: "/leads?id=" + encodeURIComponent(lead.id),
+    }}));
   }
 
   async function open(id) {

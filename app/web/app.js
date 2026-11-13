@@ -256,6 +256,11 @@ $("save-lead").addEventListener("click", async () => {
     $("lead-form").hidden = true;
     toast("Lead added");
     loadLeads();
+    document.dispatchEvent(new CustomEvent("leadpilot:mascot", {detail: {
+      text: "New lead!",
+      selector: "#lead-rows [data-preview-lead]",
+      href: "/leads?status=New",
+    }}));
   } catch (error) { $("lead-error").textContent = error.message; }
 });
 
@@ -725,4 +730,7 @@ async function pollUnread() {
 setInterval(pollUnread, 8000);
 window.LeadPilot = { $, api, esc, can, toast };
 
-boot().then(pollUnread).catch((error) => { $("greeting").textContent = error.message; });
+boot().then(() => {
+  pollUnread();
+  if (window.Hanuman) Hanuman.start();
+}).catch((error) => { $("greeting").textContent = error.message; });
