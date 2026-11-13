@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -20,7 +21,11 @@ def pending_users(user: User = Depends(current_user), db: Session = Depends(get_
 @router.post("/users/{user_id}/approve")
 def approve_user(user_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
     require_super_admin(user)
-    target = db.get(User, user_id)
+    try:
+        parsed_id = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid user ID")
+    target = db.get(User, parsed_id)
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
     if target.is_super_admin:
