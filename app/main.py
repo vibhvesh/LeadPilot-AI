@@ -12,6 +12,7 @@ from app.agents.router import router as agents_router
 from app.ai_search.router import router as ai_search_router
 from app.bot.admin_router import router as bot_admin_router
 from app.bot.router import router as bot_router
+from app.bot.talk_router import router as talk_router
 from app.audit.router import router as audit_router
 from app.auth.router import router as auth_router
 from app.auth.service import user_from_request
@@ -86,6 +87,7 @@ def create_app() -> FastAPI:
     app.include_router(search_router)
     app.include_router(ai_search_router)
     app.include_router(bot_router)
+    app.include_router(talk_router)
     app.include_router(bot_admin_router)
     app.include_router(agents_router)
     app.include_router(providers_router)

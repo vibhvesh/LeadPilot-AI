@@ -23,6 +23,7 @@
     <button class="tab" data-tab="team" type="button">♧ Team</button>
     <button class="tab" data-tab="reports" type="button">▤ Reports</button>
     <button class="tab" data-tab="grokbot" type="button">✦ GrokBot</button>
+    <button class="tab" data-tab="bots" type="button">💬 Bots <span id="bots-badge" class="badge" hidden>0</span></button>
   </nav>
   <div class="group-label">ADMINISTRATION & CONFIGURATION</div>
   <nav class="tabs" aria-label="Administration">
@@ -265,6 +266,21 @@
         <button class="btn" type="button" id="comment-save" data-manage="comments">Post update</button>
       </div>
       <div class="card"><h2>Recent updates</h2><div class="list" id="comment-list"></div></div>
+    </div>
+  </section>
+
+  <section id="bots" class="page">
+    <div class="heading"><div><h1>Talk to Bots</h1><div class="muted">Approve a bot, then chat. Cards can add leads to your pipeline.</div></div></div>
+    <div class="grid2">
+      <div class="card"><h2>Bots</h2><div class="list" id="bot-connections"></div></div>
+      <div class="card">
+        <h2 id="chat-title">Select a bot</h2>
+        <div class="list" id="chat-log"></div>
+        <div class="row" id="chat-compose" hidden>
+          <input id="chat-text" placeholder="Write a message">
+          <button class="btn" type="button" id="chat-send">Send</button>
+        </div>
+      </div>
     </div>
   </section>
 

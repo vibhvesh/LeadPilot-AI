@@ -143,6 +143,54 @@ Lead body:
 
 `company` is required. The server forces `source` to `grokbot`, links `deep_search_request_id`, skips duplicates, and scores the new leads. At most 50 leads per call. The search page shows how many leads came from the app and how many came from Grok Bot.
 
+## Talk to Bots
+
+A bot with an API token can ask to chat. `POST /api/bot/connect` creates a pending connection:
+
+```json
+{
+  "name": "Grok Bot",
+  "description": "Finds and explains leads",
+  "avatar_url": "https://example.com/avatar.png",
+  "webhook_url": "https://bot.example/talk",
+  "user_email": "person@company.com"
+}
+```
+
+`avatar_url`, `webhook_url`, and `user_email` are optional. `user_email` addresses one approved user, who can approve, block, or revoke that request. Without it, only an Admin or Super Admin can decide. Approve, block, and revoke are written to the activity log.
+
+The **Bots** page lists pending, approved, and blocked bots and polls unread counts. An approved bot has one thread.
+
+| Method | Path | Who | Purpose |
+|---|---|---|---|
+| `POST` | `/api/bot/connect` | Bot token | Register or update the connection. |
+| `GET` | `/api/bot/messages?since=` | Bot token | Messages newer than an id or ISO time. `403` until approved. |
+| `POST` | `/api/bot/messages` | Bot token | Send `{text, cards}`. `403` until approved. |
+| `GET` | `/api/bots` | Signed-in user | Connections that person can see. |
+| `GET` | `/api/bots/unread` | Signed-in user | `{unread: N}` for the nav badge. |
+| `POST` | `/api/bots/{id}/decision` | Signed-in user | `{"decision": "approve"\|"block"\|"revoke"}`. |
+| `GET` | `/api/bots/{id}/messages` | Signed-in user | Thread. Marks bot messages read. |
+| `POST` | `/api/bots/{id}/messages` | Signed-in user | `{"text": "hello"}`. |
+
+A bot reply can include cards. A lead card looks like this:
+
+```json
+{
+  "text": "Three hospitals worth a look",
+  "cards": [
+    {
+      "type": "leads",
+      "title": "Suggested leads",
+      "leads": [
+        {"company": "City Hospital", "email": "desk@city.example", "city": "Ahmedabad", "state": "Gujarat", "country": "India"}
+      ]
+    }
+  ]
+}
+```
+
+The chat shows **Add to pipeline** on each lead. That calls the normal lead create API. If the bot registered `webhook_url`, each user message is also POSTed there as `{connection_id, message_id, text, sender, callback_base_url}`. `GROKBOT_WEBHOOK_SECRET`, when set, is sent as `X-LeadPilot-Webhook-Secret`. A failed webhook does not block the chat message.
+
 Agent prompts and the outreach draft use **Settings → Business profile** (company name, what you sell, ideal customer). Until that is changed, the text stays the LinkTMS staffing pitch.
 
 ## Deploy on Render

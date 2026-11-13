@@ -2,7 +2,7 @@
 
 from app.models.agents import AgentRun
 from app.models.audit import AuditEvent
-from app.models.bot import BotToken, DeepSearchRequest
+from app.models.bot import BotConnection, BotMessage, BotToken, DeepSearchRequest
 from app.models.identity import RolePermission, SessionToken, User, UserPermission
 from app.models.leads import LEAD_STATUSES, Comment, FollowUp, Lead
 from app.models.providers import LLMConfig, ProviderAccess, ProviderKey, ProviderUsage
@@ -13,6 +13,8 @@ __all__ = [
     "AgentRun",
     "AiSearchRun",
     "AuditEvent",
+    "BotConnection",
+    "BotMessage",
     "BotToken",
     "DeepSearchRequest",
     "Comment",

@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
+from app.bot.chat import bot_messages, bot_reply, connect_bot
 from app.bot.requests import add_leads, claim_request, complete_request, list_requests
 from app.bot.tokens import require_bot
 from app.core.database import get_db
@@ -32,3 +33,18 @@ def post_complete(request_id: int, body: dict, db: Session = Depends(get_db), to
 @router.post("/leads")
 def post_leads(body: dict, db: Session = Depends(get_db), token=Depends(bot_token)):
     return add_leads(db, token, int(body.get("request_id") or 0), body.get("leads") or [])
+
+
+@router.post("/connect")
+def post_connect(body: dict, db: Session = Depends(get_db), token=Depends(bot_token)):
+    return connect_bot(db, token, body)
+
+
+@router.get("/messages")
+def get_bot_messages(since: str | None = None, db: Session = Depends(get_db), token=Depends(bot_token)):
+    return bot_messages(db, token, since)
+
+
+@router.post("/messages")
+def post_bot_message(body: dict, db: Session = Depends(get_db), token=Depends(bot_token)):
+    return bot_reply(db, token, str(body.get("text") or ""), body.get("cards"))
