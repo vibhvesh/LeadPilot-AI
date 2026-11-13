@@ -63,10 +63,8 @@ GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_DISCOVERY_URL=https://accounts.google.com/.well-known/openid-configuration
 GOOGLE_REDIRECT_URI=https://${DOMAIN}/auth/google/callback
-MICROSOFT_CLIENT_ID=
-MICROSOFT_CLIENT_SECRET=
-MICROSOFT_AUTHORITY=https://login.microsoftonline.com/organizations/v2.0
-MICROSOFT_REDIRECT_URI=https://${DOMAIN}/auth/microsoft/callback
+SUPER_ADMIN_EMAIL=vibhvesh@gmail.com
+ALLOWED_GOOGLE_WORKSPACE_DOMAIN=linktms.com
 EOF
 chmod 600 .env
 
