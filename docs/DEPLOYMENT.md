@@ -1,5 +1,7 @@
 # CanberraAI Lead Generation System for TMS LLC — deployment
 
+Render deployment is described in the README (`render.yaml`: web service + Postgres). The steps below are the existing VPS installer.
+
 Requires Ubuntu with Docker Engine and Docker Compose plugin installed.
 
 ## One-line installer

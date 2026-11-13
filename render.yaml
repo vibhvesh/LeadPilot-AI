@@ -1,0 +1,60 @@
+# Render Blueprint: one web service and Postgres.
+# After the first deploy, set PUBLIC_BASE_URL to the service URL and add the
+# Google OAuth redirect https://<service>/auth/google/callback.
+databases:
+  - name: leadpilot-db
+    plan: free
+    region: oregon
+    databaseName: leadpilot
+    user: leadpilot
+
+services:
+  - type: web
+    name: leadpilot
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: leadpilot-db
+          property: connectionString
+      - key: DEMO_MODE
+        value: "false"
+      - key: APP_ENV
+        value: production
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ENCRYPTION_KEY
+        generateValue: true
+      - key: SUPER_ADMIN_EMAIL
+        value: vibhvesh@gmail.com
+      - key: SEARCH_PROVIDER
+        value: auto
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+      - key: XAI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: BRAVE_API_KEY
+        sync: false
+      - key: SEARCH_API_KEY
+        sync: false

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Sign in · LeadPilot AI</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">✦ LeadPilot AI <small>CANBERRAAI · TMS-LEAD WORKSPACE</small></div>
+  <div class="who"><b>Sign in</b>Google account</div>
+</header>
+<main class="shell">
+  <section class="grid2">
+    <div class="card">
+      <h2>Sign in to LeadPilot</h2>
+      <p class="muted">vibhvesh@gmail.com is the Super Admin. Every other Google account stays pending until an administrator approves it.</p>
+      <div id="google-block" class="row" style="margin:14px 0"></div>
+      <div id="demo-block" hidden>
+        <div class="field"><label>Email</label><input id="email" type="email" placeholder="name@company.com" autocomplete="username"></div>
+        <div class="field"><label>Name</label><input id="name" placeholder="Your name" autocomplete="name"></div>
+        <div class="row">
+          <button class="btn" id="demo-login" type="button">Continue</button>
+          <button class="btn secondary" id="demo-admin" type="button">Super Admin demo</button>
+        </div>
+        <p class="note">Demo sign-in is for local testing when Google OAuth keys are not configured. It is off when DEMO_MODE is false.</p>
+      </div>
+      <div class="error" id="message"></div>
+    </div>
+    <div class="card">
+      <h2>What happens next</h2>
+      <div class="list">
+        <div class="item"><b>Approved accounts</b>Open the workspace. Leads, search, and the agent pipeline use the database.</div>
+        <div class="item"><b>New accounts</b>You will see a pending-approval message. An admin admits you from User administration.</div>
+        <div class="item"><b>Roles</b>Super Admin, Admin, and Member. Each module can be turned on or off, and the API enforces it.</div>
+      </div>
+    </div>
+  </section>
+</main>
+<script>
+const message = document.getElementById("message");
+async function config() {
+  const res = await fetch("/api/auth/config");
+  return res.json();
+}
+function show(text) { message.textContent = text || ""; }
+async function demoLogin(email, name) {
+  show("");
+  const res = await fetch("/auth/demo/login", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({email, name})
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) { show(data.detail || "Sign-in failed"); return; }
+  if (data.status === "pending") { show(data.message); return; }
+  if (data.status === "approved") location.href = "/";
+}
+document.getElementById("demo-login").addEventListener("click", () => {
+  demoLogin(document.getElementById("email").value, document.getElementById("name").value);
+});
+document.getElementById("demo-admin").addEventListener("click", () => {
+  demoLogin(document.getElementById("demo-admin").dataset.email, "Vibhvesh");
+});
+config().then(cfg => {
+  if (cfg.google_enabled) {
+    document.getElementById("google-block").innerHTML = '<a class="btn" href="/auth/google/login">Sign in with Google</a>';
+  }
+  if (cfg.demo_mode) {
+    document.getElementById("demo-block").hidden = false;
+    if (cfg.demo_super_admin) document.getElementById("demo-admin").dataset.email = cfg.demo_super_admin;
+  } else if (!cfg.google_enabled) {
+    show("Google sign-in is not configured yet. Add the OAuth client on the server.");
+  }
+});
+</script>
+</body>
+</html>

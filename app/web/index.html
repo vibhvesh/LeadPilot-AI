@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LeadPilot AI | TMS-LEAD</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">✦ LeadPilot AI <small>CANBERRAAI · TMS-LEAD WORKSPACE</small></div>
+  <div class="who"><b id="who-email">…</b><span id="who-role"></span>
+    <div style="margin-top:8px"><button class="btn signout small" id="signout" type="button">Sign out</button></div>
+  </div>
+</header>
+<main class="shell">
+  <div class="group-label">LEAD WORKSPACE</div>
+  <nav class="tabs" aria-label="Lead workspace">
+    <button class="tab active" data-tab="overview" type="button">▦ Overview</button>
+    <button class="tab" data-tab="leads" type="button">♙ Leads</button>
+    <button class="tab" data-tab="pipeline" type="button">▥ Pipeline</button>
+    <button class="tab" data-tab="followups" type="button">◷ Follow-ups</button>
+    <button class="tab" data-tab="team" type="button">♧ Team</button>
+    <button class="tab" data-tab="reports" type="button">▤ Reports</button>
+    <button class="tab" data-tab="grokbot" type="button">✦ GrokBot</button>
+  </nav>
+  <div class="group-label">ADMINISTRATION & CONFIGURATION</div>
+  <nav class="tabs" aria-label="Administration">
+    <button class="tab" data-tab="users" type="button">♙ Users <span id="pending-badge" class="badge" hidden>0</span></button>
+    <button class="tab" data-tab="search" type="button">⌕ Search criteria</button>
+    <button class="tab" data-tab="apis" type="button">⚿ API keys</button>
+    <button class="tab" data-tab="ai" type="button">✦ AI / LLM</button>
+    <button class="tab" data-tab="geo" type="button">◎ Geo target</button>
+    <button class="tab" data-tab="activity" type="button">◴ Activity</button>
+    <button class="tab" data-tab="updates" type="button">▤ Comments</button>
+    <button class="tab" data-tab="settings" type="button">⚙ Settings</button>
+  </nav>
+
+  <section id="overview" class="page active">
+    <div class="heading"><div><h1 id="greeting">Workspace</h1><div class="muted">Your sales workspace at a glance.</div></div><span class="demo" id="mode-pill">WORKSPACE</span></div>
+    <div class="banner" id="start-banner">
+      <div><b>Start with a target profile.</b><div class="muted">Save search criteria, run it, then score the new leads in GrokBot. A person still has to mark anyone Qualified.</div></div>
+      <button class="btn" type="button" data-jump="search">Create a search</button>
+    </div>
+    <div class="stats">
+      <div class="card"><div class="label">Total leads</div><div class="num" id="m-total">0</div><div class="label">From the database</div></div>
+      <div class="card"><div class="label">Qualified leads</div><div class="num" id="m-qualified">0</div><div class="label">After human review</div></div>
+      <div class="card"><div class="label">Pipeline value</div><div class="num" id="m-value">₹0</div><div class="label">New, contacted, and qualified</div></div>
+      <div class="card"><div class="label">Conversion rate</div><div class="num" id="m-rate">0%</div><div class="label" id="m-follow">Won / all leads</div></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><h2>Recent leads</h2><div class="tablewrap"><table><thead><tr><th>Contact</th><th>Company</th><th>Region</th><th>Score</th><th>Status</th></tr></thead><tbody id="recent-leads"></tbody></table></div></div>
+      <div class="card"><h2>Admin summary</h2><div class="list" id="admin-summary"></div></div>
+    </div>
+  </section>
+
+  <section id="leads" class="page">
+    <div class="heading"><div><h1>Leads</h1><div class="muted">Records from search, plus anything you add by hand.</div></div><button class="btn" type="button" id="toggle-lead-form" data-manage="leads">Add lead</button></div>
+    <div class="card" id="lead-form" hidden>
+      <h2>New lead</h2>
+      <div class="split3">
+        <div class="field"><label>Company</label><input id="lead-company"></div>
+        <div class="field"><label>Contact</label><input id="lead-contact"></div>
+        <div class="field"><label>Email</label><input id="lead-email"></div>
+        <div class="field"><label>Phone</label><input id="lead-phone"></div>
+        <div class="field"><label>Website</label><input id="lead-website"></div>
+        <div class="field"><label>Industry</label><input id="lead-industry"></div>
+        <div class="field"><label>Country</label><input id="lead-country"></div>
+        <div class="field"><label>State</label><input id="lead-state"></div>
+        <div class="field"><label>City</label><input id="lead-city"></div>
+      </div>
+      <div class="field"><label>Notes</label><textarea id="lead-notes"></textarea></div>
+      <button class="btn" type="button" id="save-lead">Save lead</button>
+      <div class="error" id="lead-error"></div>
+    </div>
+    <div class="card">
+      <div class="row">
+        <div class="field" style="margin:0;min-width:220px"><label>Search</label><input id="lead-q" placeholder="Company, contact, city"></div>
+        <div class="field" style="margin:0"><label>Status</label><select id="lead-status"><option value="">All</option><option>New</option><option>Contacted</option><option>Qualified</option><option>Won</option><option>Lost</option></select></div>
+        <button class="btn secondary" type="button" id="reload-leads">Refresh</button>
+      </div>
+      <div class="tablewrap"><table><thead><tr><th>Company</th><th>Contact</th><th>Source</th><th>Region</th><th>Score</th><th>Status</th></tr></thead><tbody id="lead-rows"></tbody></table></div>
+      <div id="lead-detail"></div>
+    </div>
+  </section>
+
+  <section id="pipeline" class="page">
+    <div class="heading"><div><h1>Sales pipeline</h1><div class="muted">New, Contacted, Qualified, Won, and Lost — counted from lead records.</div></div></div>
+    <div class="board" id="pipeline-board"></div>
+  </section>
+
+  <section id="followups" class="page">
+    <div class="heading"><div><h1>Follow-ups</h1><div class="muted">Reminders stay in the database until you mark them done.</div></div></div>
+    <div class="grid2">
+      <div class="card">
+        <h2>Add a reminder</h2>
+        <div class="field"><label>Title</label><input id="fu-title" placeholder="Call the hiring manager"></div>
+        <div class="field"><label>Lead</label><select id="fu-lead"><option value="">Workspace reminder</option></select></div>
+        <div class="field"><label>Due</label><input id="fu-due" type="datetime-local"></div>
+        <div class="field"><label>Notes</label><textarea id="fu-notes"></textarea></div>
+        <button class="btn" type="button" id="fu-save" data-manage="followups">Save follow-up</button>
+      </div>
+      <div class="card"><h2>Queue</h2><div class="list" id="fu-list"></div></div>
+    </div>
+  </section>
+
+  <section id="team" class="page">
+    <div class="heading"><div><h1>Team</h1><div class="muted">Approved people and the role they currently have.</div></div></div>
+    <div class="card"><h2>Team access</h2><div class="list" id="team-list"></div></div>
+  </section>
+
+  <section id="reports" class="page">
+    <div class="heading"><div><h1>Reports</h1><div class="muted">This month’s lead generation, from stored leads and searches.</div></div></div>
+    <div class="stats" id="report-stats"></div>
+    <div class="card"><h2>Leads by country</h2><div id="report-countries"></div></div>
+  </section>
+
+  <section id="grokbot" class="page">
+    <div class="heading"><div><h1>GrokBot Agent Workspace</h1><div class="muted">Research, enrich, score, and draft outreach. Nothing is sent automatically.</div></div></div>
+    <div class="grid2">
+      <div class="card">
+        <h2>Run the pipeline</h2>
+        <div class="field"><label>Lead</label><select id="agent-lead"></select></div>
+        <button class="btn" type="button" id="agent-run" data-manage="grokbot">Run specialist agents</button>
+        <p class="muted" id="agent-meta"></p>
+        <div class="steps" id="agent-steps"></div>
+      </div>
+      <div class="card">
+        <h2>Outreach draft</h2>
+        <div class="field"><label>Subject</label><input id="draft-subject" readonly></div>
+        <div class="draft" id="draft-body">Run the pipeline to write a draft. It stays a draft.</div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn" type="button" id="agent-qualify" data-manage="leads">Mark qualified</button>
+          <button class="btn danger" type="button" id="agent-reject" data-manage="leads">Not a fit</button>
+        </div>
+        <p class="note">Qualified is a human decision. The agents only recommend.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="users" class="page">
+    <div class="heading"><div><h1>User administration</h1><div class="muted">Approve Google accounts, assign Admin or Member, and set module access.</div></div></div>
+    <div class="card"><h2>Users and roles</h2><div class="tablewrap"><table><thead><tr><th>Account</th><th>Role</th><th>Status</th><th></th></tr></thead><tbody id="user-rows"></tbody></table></div></div>
+    <div class="grid2">
+      <div class="card" id="perm-card"><h2>Module permissions</h2><p class="muted" id="perm-target">Select a user to edit an override. Empty overrides use the role template.</p><div id="perm-grid"></div><div class="row"><button class="btn" type="button" id="perm-save" data-manage="users">Save user overrides</button><button class="btn secondary" type="button" id="perm-clear" data-manage="users">Use role defaults</button></div></div>
+      <div class="card"><h2>Role templates</h2><p class="muted">Only the Super Admin can change Admin and Member defaults. Super Admin access stays full.</p><div class="field"><label>Role</label><select id="role-template"><option value="member">Member</option><option value="admin">Admin</option></select></div><div id="role-grid"></div><button class="btn" type="button" id="role-save">Save role template</button></div>
+    </div>
+  </section>
+
+  <section id="search" class="page">
+    <div class="heading"><div><h1>Search criteria</h1><div class="muted">Describe who you want. A run collects companies, skips duplicates, and saves new leads.</div></div></div>
+    <div class="grid2">
+      <div class="card">
+        <h2>Target profile</h2>
+        <div class="field"><label>Saved search name</label><input id="s-name" placeholder="Gujarat technology companies"></div>
+        <div class="field"><label>Industry</label><input id="s-industry" placeholder="Technology, logistics, healthcare"></div>
+        <div class="field"><label>Keywords</label><input id="s-keywords" placeholder="hiring, software, warehouse"></div>
+        <div class="field"><label>Company size</label><select id="s-size"><option>Any size</option><option>1–50</option><option>51–200</option><option>201–1,000</option><option>1,000+</option></select></div>
+        <div class="split3">
+          <div class="field"><label>Country</label><input id="s-country" placeholder="India"></div>
+          <div class="field"><label>State</label><input id="s-state" placeholder="Gujarat"></div>
+          <div class="field"><label>District</label><input id="s-district"></div>
+          <div class="field"><label>City</label><input id="s-city"></div>
+          <div class="field"><label>PIN / ZIP</label><input id="s-postal"></div>
+          <div class="field"><label>Results limit</label><input id="s-limit" type="number" value="10" min="1" max="25"></div>
+        </div>
+        <button class="btn" type="button" id="s-save" data-manage="search">Save and run search</button>
+        <div class="error" id="s-error"></div>
+        <div id="s-result"></div>
+      </div>
+      <div class="card"><h2>Saved profiles</h2><div class="list" id="s-list"></div></div>
+    </div>
+  </section>
+
+  <section id="apis" class="page">
+    <div class="heading"><div><h1>API key management</h1><div class="muted">Keys stay on the server. This page shows only a hint, plus who may call each provider.</div></div></div>
+    <div class="grid2">
+      <div class="card">
+        <h2>Store a provider key</h2>
+        <div class="field"><label>Provider</label><select id="key-provider"><option value="xai">xAI / Grok</option><option value="gemini">Gemini</option><option value="openai">OpenAI</option><option value="tavily">Tavily search</option><option value="brave">Brave search</option></select></div>
+        <div class="field"><label>API key</label><input id="key-value" type="password" autocomplete="off" placeholder="Paste once. It will not be shown again."></div>
+        <button class="btn" type="button" id="key-save" data-manage="apikeys">Save key on server</button>
+        <div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>Provider</th><th>Status</th><th>Hint</th><th></th></tr></thead><tbody id="key-rows"></tbody></table></div>
+      </div>
+      <div class="card">
+        <h2>Who can use a provider</h2>
+        <div class="field"><label>Provider</label><select id="acc-provider"><option value="xai">xAI / Grok</option><option value="gemini">Gemini</option><option value="openai">OpenAI</option><option value="search">Web search</option><option value="mock">Demo mock</option></select></div>
+        <div class="field"><label>Role</label><select id="acc-role"><option value="member">Member</option><option value="admin">Admin</option><option value="super_admin">Super Admin</option></select></div>
+        <div class="split3">
+          <div class="field"><label>Daily quota</label><input id="acc-daily" type="number" value="25"></div>
+          <div class="field"><label>Monthly quota</label><input id="acc-monthly" type="number" value="250"></div>
+          <div class="field"><label>Enabled</label><select id="acc-enabled"><option value="true">Yes</option><option value="false">No</option></select></div>
+        </div>
+        <button class="btn" type="button" id="acc-save" data-manage="apikeys">Save access</button>
+        <div id="usage-list" class="list" style="margin-top:12px"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="ai" class="page">
+    <div class="heading"><div><h1>AI / LLM configuration</h1><div class="muted">Auto uses the first configured provider. With no key, the demo model runs.</div></div></div>
+    <div class="grid2">
+      <div class="card">
+        <h2>Model routing</h2>
+        <div class="field"><label>Primary provider</label><select id="ai-primary"><option value="auto">Auto — first configured key</option><option value="xai">xAI / Grok</option><option value="gemini">Gemini</option><option value="openai">OpenAI</option><option value="mock">Demo model</option></select></div>
+        <div class="field"><label>Model ID</label><input id="ai-model" placeholder="Leave blank for the provider default"></div>
+        <div class="field"><label>Fallback</label><select id="ai-fallback"><option value="mock">Demo model</option><option value="xai">xAI / Grok</option><option value="gemini">Gemini</option><option value="openai">OpenAI</option></select></div>
+        <div class="split3">
+          <div class="field"><label>Temperature</label><input id="ai-temp" type="number" min="0" max="2" step="0.1" value="0.2"></div>
+          <div class="field"><label>Max tokens</label><input id="ai-tokens" type="number" value="1200"></div>
+        </div>
+        <button class="btn" type="button" id="ai-save" data-manage="ai">Save AI settings</button>
+        <p class="note" id="ai-effective"></p>
+      </div>
+      <div class="card">
+        <h2>Lead generation logic</h2>
+        <div class="list">
+          <div class="item"><b>1. Search and collect</b>Web search, or the built-in demo source.</div>
+          <div class="item"><b>2. Normalize and deduplicate</b>Same website or company name is not saved twice.</div>
+          <div class="item"><b>3. Specialist agents</b>Research, enrichment, quality, score, and an email draft.</div>
+          <div class="item"><b>4. Human review</b>Qualified is set only when someone presses Mark qualified.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="geo" class="page">
+    <div class="heading"><div><h1>Geographic targeting</h1><div class="muted">Default country, state, district, city, and PIN / ZIP for new searches.</div></div></div>
+    <div class="card">
+      <div class="split3">
+        <div class="field"><label>Country</label><input id="g-country" placeholder="India"></div>
+        <div class="field"><label>State / Province</label><input id="g-state" placeholder="Gujarat"></div>
+        <div class="field"><label>District</label><input id="g-district" placeholder="Vadodara"></div>
+        <div class="field"><label>City</label><input id="g-city"></div>
+        <div class="field"><label>PIN / ZIP</label><input id="g-postal"></div>
+        <div class="field"><label>Radius (km)</label><input id="g-radius" type="number" placeholder="Optional"></div>
+      </div>
+      <button class="btn" type="button" id="g-save" data-manage="geo">Save geographic target</button>
+    </div>
+  </section>
+
+  <section id="activity" class="page">
+    <div class="heading"><div><h1>User activity monitor</h1><div class="muted">Sign-ins, searches, model calls, and permission changes.</div></div></div>
+    <div class="stats" id="activity-stats"></div>
+    <div class="card"><h2>Recent events</h2><div id="activity-list"></div></div>
+  </section>
+
+  <section id="updates" class="page">
+    <div class="heading"><div><h1>Comments and updates</h1><div class="muted">Announcements for the workspace. Lead notes live on the lead itself.</div></div></div>
+    <div class="grid2">
+      <div class="card">
+        <h2>Post an update</h2>
+        <div class="field"><label>Message</label><textarea id="comment-body" placeholder="Write an announcement or comment"></textarea></div>
+        <button class="btn" type="button" id="comment-save" data-manage="comments">Post update</button>
+      </div>
+      <div class="card"><h2>Recent updates</h2><div class="list" id="comment-list"></div></div>
+    </div>
+  </section>
+
+  <section id="settings" class="page">
+    <div class="heading"><div><h1>Workspace settings</h1><div class="muted">Name, retention, and how this server is configured.</div></div></div>
+    <div class="grid2">
+      <div class="card">
+        <h2>Preferences</h2>
+        <div class="field"><label>Workspace</label><input id="set-workspace"></div>
+        <div class="field"><label>Product name</label><input id="set-product"></div>
+        <div class="field"><label>Currency</label><input id="set-currency"></div>
+        <div class="field"><label>Retention (days)</label><input id="set-retention" type="number"></div>
+        <button class="btn" type="button" id="set-save" data-manage="settings">Save settings</button>
+      </div>
+      <div class="card"><h2>Platform</h2><div class="list" id="set-info"></div></div>
+    </div>
+  </section>
+  <div class="foot">CanberraAI LeadPilot · LinkTMS · TMS-LEAD</div>
+</main>
+<div class="toast" id="toast" hidden></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

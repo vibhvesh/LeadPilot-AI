@@ -1,1 +1,1 @@
-# LeadPilot AI application
+"""CanberraAI LeadPilot application package."""
