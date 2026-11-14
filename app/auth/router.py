@@ -177,7 +177,11 @@ def me(request: Request, db: Session = Depends(get_db), user=Depends(get_current
 
 def _page(title: str, message: str) -> str:
     return (
-        "<!doctype html><html><head><meta charset='utf-8'><title>LeadPilot</title></head>"
+        "<!doctype html><html><head><meta charset='utf-8'><title>LeadPilot</title>"
+        "<link rel='icon' href='/static/favicon.svg' type='image/svg+xml'>"
+        "<link rel='icon' href='/static/favicon-32.png' sizes='32x32' type='image/png'>"
+        "<link rel='apple-touch-icon' href='/static/apple-touch-icon.png'>"
+        "<link rel='manifest' href='/static/site.webmanifest'></head>"
         f"<body style='font-family:Segoe UI,Arial;background:#f4f6fa;padding:48px'>"
         f"<h2>{title}</h2><p>{message}</p><p><a href='/login'>Back to sign in</a></p></body></html>"
     )

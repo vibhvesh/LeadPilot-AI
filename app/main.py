@@ -169,7 +169,7 @@ def create_app() -> FastAPI:
 
     @app.get("/favicon.ico")
     def favicon():
-        return Response(status_code=204)
+        return FileResponse(WEB / "favicon.ico", media_type="image/x-icon")
 
     from app.perf.middleware import PerfMiddleware
 
