@@ -124,7 +124,16 @@
     return {kind: "team-roster", selector: "#team-list", facts: {count: count}};
   }
 
+  function skipped(snap, key) {
+    if (snap.restricted && snap.restricted[key]) {
+      return {kind: "generic", selector: "section.page.active h1", facts: {}};
+    }
+    return null;
+  }
+
   function usersInsight(snap) {
+    const quiet = skipped(snap, "users");
+    if (quiet) return quiet;
     const rows = snap.users || [];
     const pending = rows.filter(function (user) { return user.status === "pending"; }).length || Number(snap.pendingUsers) || 0;
     if (pending > 0) {
@@ -138,6 +147,8 @@
   }
 
   function apisInsight(snap) {
+    const quiet = skipped(snap, "apis");
+    if (quiet) return quiet;
     const keys = snap.keys || [];
     const missing = keys.filter(function (key) { return !key.configured; });
     const missingLlm = missing.filter(function (key) { return LLM_KEYS.indexOf(key.provider) !== -1; });
@@ -160,8 +171,21 @@
     return {kind: "apis-ok", selector: "#key-rows", facts: {}};
   }
 
+  function cockpitWarning(warnings, level) {
+    const pick = (warnings || []).filter(function (item) { return item && item.level === level; })[0];
+    if (!pick) return null;
+    return {
+      kind: level === "alert" ? "cockpit-alert" : "cockpit-caution",
+      selector: pick.selector || "#cockpit",
+      facts: {label: pick.label || "Cockpit warning", count: Number(pick.count) || 0},
+    };
+  }
+
   function overviewInsight(snap) {
     const overview = snap.overview || {};
+    const warnings = overview.warnings || [];
+    const alert = cockpitWarning(warnings, "alert");
+    if (alert) return alert;
     if (overview.banner || Number(overview.total) === 0) {
       return {kind: "overview-start", selector: "#start-banner", facts: {}};
     }
@@ -177,6 +201,8 @@
         facts: {company: choice.facts.company, scorePhrase: phrase},
       };
     }
+    const caution = cockpitWarning(warnings, "warn");
+    if (caution) return caution;
     return {kind: "overview-quiet", selector: "#m-total", facts: {count: Number(overview.total) || 0}};
   }
 
@@ -217,6 +243,8 @@
       return {kind: "bots-clear", selector: "#bot-connections", facts: {count: bots.length}};
     },
     settings: function (snap) {
+      const quiet = skipped(snap, "settings");
+      if (quiet) return quiet;
       const settings = snap.settings || {};
       if (!safeLabel(settings.seller, "") || !safeLabel(settings.offering, "")) {
         const selector = safeLabel(settings.seller, "") ? "#set-offering" : "#set-seller";
@@ -225,6 +253,8 @@
       return {kind: "settings-ready", selector: "#set-info", facts: {}};
     },
     activity: function (snap) {
+      const quiet = skipped(snap, "activity");
+      if (quiet) return quiet;
       const rows = snap.activity || [];
       const failed = rows.filter(function (row) { return row.label === "Failed" && Number(row.value) > 0; })[0];
       if (failed) return {kind: "activity-failed", selector: '#activity-stats [data-activity="Failed"]', facts: {count: Number(failed.value)}};
@@ -259,10 +289,21 @@
   };
 
   function choose(snapshot) {
-    const snap = snapshot || {};
-    if (snap.previewOpen) return {kind: "preview", selector: "#lead-preview .preview-panel", facts: {}};
-    const handler = HANDLERS[snap.page] || HANDLERS.overview;
-    return handler(snap);
+    try {
+      const snap = snapshot || {};
+      if (snap.previewOpen) return {kind: "preview", selector: "#lead-preview .preview-panel", facts: {}};
+      const handler = HANDLERS[snap.page] || HANDLERS.overview;
+      const insight = handler(snap);
+      if (!insight || !insight.kind) return {kind: "generic", selector: "section.page.active h1", facts: {}};
+      return insight;
+    } catch (error) {
+      return {kind: "generic", selector: "section.page.active h1", facts: {}};
+    }
+  }
+
+  function tabBlocked(doc, tab) {
+    const button = doc.querySelector('.tab[data-tab="' + tab + '"]');
+    return !!(button && button.hidden);
   }
 
   function shownText(el) {
@@ -307,6 +348,12 @@
     const agentLead = doc.getElementById("agent-lead");
     return {
       page: pageEl ? pageEl.id : "overview",
+      restricted: {
+        users: tabBlocked(doc, "users"),
+        apis: tabBlocked(doc, "apis"),
+        activity: tabBlocked(doc, "activity"),
+        settings: tabBlocked(doc, "settings"),
+      },
       now: now || Date.now(),
       previewOpen: !!(doc.getElementById("lead-preview") && !doc.getElementById("lead-preview").hidden),
       pendingUsers: badge && !badge.hidden ? Number(badge.textContent) || 0 : 0,
@@ -354,6 +401,16 @@
         banner: !!(banner && !banner.hidden),
         total: Number(shownText(doc.getElementById("m-total")).replace(/[^\d.-]/g, "")) || 0,
         recent: readLeads(doc, "#recent-leads tr[data-preview-lead]"),
+        warnings: Array.prototype.map.call(doc.querySelectorAll("#overview [data-cockpit-level]"), function (el) {
+          const level = el.getAttribute("data-cockpit-level");
+          if ((level !== "alert" && level !== "warn") || !el.id) return null;
+          return {
+            level: level,
+            label: safeLabel(el.getAttribute("data-cockpit-label"), "Cockpit warning"),
+            count: Number(el.getAttribute("data-cockpit-count")) || 0,
+            selector: "#" + el.id,
+          };
+        }).filter(Boolean),
       },
     };
   }

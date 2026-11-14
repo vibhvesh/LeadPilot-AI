@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.deps import require_module
 from app.dashboard.service import dashboard, pipeline, reports
+from app.dashboard.summary import summary
 
 router = APIRouter(prefix="/api")
 
@@ -13,6 +14,11 @@ router = APIRouter(prefix="/api")
 @router.get("/dashboard")
 def get_dashboard(db: Session = Depends(get_db), actor=Depends(require_module("dashboard"))):
     return dashboard(db, actor)
+
+
+@router.get("/dashboard/summary")
+def get_dashboard_summary(db: Session = Depends(get_db), actor=Depends(require_module("dashboard"))):
+    return summary(db, actor)
 
 
 @router.get("/pipeline")

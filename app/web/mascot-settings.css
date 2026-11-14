@@ -1,0 +1,48 @@
+/* Mascot preferences. The panel is part of the signed-in workspace for every role. */
+.mascot-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(20, 33, 61, .46);
+}
+.mascot-sheet {
+  position: absolute;
+  top: 24px;
+  right: 16px;
+  width: min(440px, calc(100vw - 24px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  background: #fff;
+  color: #172033;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 16px 40px rgba(20, 33, 61, .2);
+}
+.mascot-sheet h2 { margin: 0 0 4px; font-size: 18px; }
+.mascot-sheet h3 { margin: 14px 0 8px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #68758b; }
+.mascot-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.mascot-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 6px 4px;
+  border: 1px solid #e5eaf2;
+  border-radius: 10px;
+  background: #fff;
+  color: #172033;
+  cursor: pointer;
+}
+.mascot-card svg { width: 48px; height: 52px; }
+.mascot-card b { font-size: 11px; }
+.mascot-card.is-selected { border-color: #e07a2f; background: #fff7ea; }
+.mascot-options { display: grid; gap: 8px; }
+.mascot-options label { display: grid; gap: 4px; font-size: 12px; font-weight: 700; color: #536078; }
+.mascot-options select, .mascot-options input[type="range"] { width: 100%; }
+.mascot-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+.mascot-note { margin: 8px 0 0; color: #68758b; font-size: 12px; }
+@media (max-width: 640px) {
+  .mascot-sheet { top: 8px; right: 8px; left: 8px; width: auto; max-height: calc(100dvh - 16px); }
+  .mascot-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

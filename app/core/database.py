@@ -40,6 +40,9 @@ def init_database(url: str) -> None:
 
     upgrade_social(engine)
     upgrade_pulse(engine)
+    from app.mascot.schema import upgrade as upgrade_mascot
+
+    upgrade_mascot(engine)
 
 
 def _ensure_columns(bound) -> None:

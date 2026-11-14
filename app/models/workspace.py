@@ -40,4 +40,5 @@ class WorkspaceSettings(Base):
     icp_posted_window: Mapped[str] = mapped_column(String(20), default="open")
     icp_min_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     icp_keywords: Mapped[str] = mapped_column(String(500), default='"staffing services" "agencies welcome"')
+    mascot_character: Mapped[str] = mapped_column(String(40), default="hanuman")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)

@@ -59,7 +59,8 @@ function show(tab, options = {}) {
   document.querySelectorAll(".page").forEach((page) => page.classList.toggle("active", page.id === tab));
   history.replaceState(null, "", options.url || ("#" + tab));
   const loader = loaders[tab];
-  if (loader) loader().catch((error) => toast(error.message));
+  if (!loader) return Promise.resolve();
+  return Promise.resolve().then(loader).catch((error) => { toast(error.message); });
 }
 
 function readLeadRoute() {
@@ -96,7 +97,10 @@ function showProviderStatus() {
   });
 }
 function applyAccess() {
-  document.querySelectorAll(".tab").forEach((button) => { button.hidden = !can(TAB_MODULE[button.dataset.tab]); });
+  document.querySelectorAll(".tab").forEach((button) => {
+    const moduleName = TAB_MODULE[button.dataset.tab];
+    button.hidden = moduleName ? !can(moduleName) : false;
+  });
   document.querySelectorAll("[data-manage]").forEach((el) => { el.hidden = !can(el.dataset.manage, true); });
   const badge = $("pending-badge");
   if (state.me.pending_users) { badge.hidden = false; badge.textContent = state.me.pending_users; }
@@ -157,21 +161,7 @@ const loaders = {
 };
 
 async function loadOverview() {
-  const data = await api("/api/dashboard");
-  $("m-total").textContent = data.total_leads;
-  $("m-qualified").textContent = data.qualified_leads;
-  $("m-value").textContent = money(data.pipeline_value);
-  $("m-rate").textContent = percent(data.conversion_rate);
-  $("m-follow").textContent = data.followups_due + " follow-ups open · won / all leads";
-  $("start-banner").hidden = data.total_leads > 0;
-  $("recent-leads").innerHTML = data.recent_leads.length ? data.recent_leads.map((lead) =>
-    `<tr class="clicky" data-preview-lead="${lead.id}" data-score="${lead.score ?? ""}" data-status="${esc(lead.status || "")}" data-company="${esc(lead.company || "")}"><td>${esc(lead.contact_name || "—")}</td><td>${esc(lead.company)}</td><td>${esc(lead.region || "—")}</td><td>${lead.score ?? "—"}</td><td>${pill(lead.status)}</td></tr>`
-  ).join("") : `<tr><td colspan="5">No leads yet.</td></tr>`;
-  const admin = data.admin;
-  $("admin-summary").innerHTML = admin ? `
-    <div class="item"><b>Pending approval</b>${admin.pending} account${admin.pending === 1 ? "" : "s"}</div>
-    <div class="item"><b>Approved people</b>${admin.approved}</div>
-    <div class="item"><b>New user policy</b>${esc(admin.policy)}</div>` : `<div class="item"><b>Your role</b>${esc(ROLE_LABEL[state.me.role] || state.me.role)}</div>`;
+  if (window.Cockpit) await Cockpit.refresh();
 }
 
 async function ensureLeads() {
@@ -737,9 +727,14 @@ async function pollUnread() {
   } catch (error) { /* stay on the page if a poll fails */ }
 }
 setInterval(pollUnread, 8000);
-window.LeadPilot = { $, api, esc, can, toast };
+window.LeadPilot = { $, api, esc, can, toast, show, money, percent };
 
 boot().then(() => {
+  if (window.Cockpit) Cockpit.start();
   pollUnread();
   if (window.Hanuman) Hanuman.start();
-}).catch((error) => { $("greeting").textContent = error.message; });
+  if (window.MascotSettings) MascotSettings.load();
+}).catch((error) => {
+  $("greeting").textContent = error.message;
+  if (window.Hanuman) Hanuman.start();
+});

@@ -65,7 +65,7 @@
   justify-content: flex-end;
   gap: 0 6px;
 }
-.hanuman-hide, .hanuman-show, .hanuman-name, .hanuman-next {
+.hanuman-hide, .hanuman-show, .hanuman-name, .hanuman-next, .hanuman-settings {
   border: 0;
   background: transparent;
   color: #8a94a6;
@@ -126,7 +126,22 @@
   overflow: hidden;
   clip: rect(0 0 0 0);
 }
+.hanuman-small { width: 96px; }
+.hanuman-large { width: 156px; }
+.hanuman .mascot-svg, .hanuman .hanuman-svg { width: 72px; height: 80px; }
+.hanuman-small .mascot-svg, .hanuman-small .hanuman-svg,
+.hanuman-small .hanuman-hit { width: 56px; height: 62px; }
+.hanuman-large .mascot-svg, .hanuman-large .hanuman-svg,
+.hanuman-large .hanuman-hit { width: 104px; height: 114px; }
+.hanuman.is-fixed.hanuman-left { left: 12px; right: auto; }
+.hanuman-left .hanuman-hit { margin-left: 0; margin-right: auto; }
+.hanuman-left .hanuman-tools { justify-content: flex-start; }
+.hanuman-left .hanuman-bubble { right: auto; left: 76px; }
+.hanuman-left .hanuman-bubble::after { right: auto; left: 14px; }
+.hanuman-show-left { left: 10px; right: auto; }
 @media (max-width: 800px) {
+  .hanuman.is-fixed { bottom: 72px; }
+  .hanuman-show { bottom: 72px; }
   .hanuman { width: 96px; }
   .hanuman-hit { width: 56px; height: 62px; }
   .hanuman-bubble,
@@ -139,7 +154,7 @@
     max-width: min(168px, calc(100vw - 24px));
     font-size: 11px;
   }
-  .hanuman-hide, .hanuman-name, .hanuman-next { min-height: 32px; font-size: 11px; padding: 6px 2px; }
+  .hanuman-hide, .hanuman-name, .hanuman-next, .hanuman-settings { min-height: 32px; font-size: 11px; padding: 6px 2px; }
   .hanuman-picker { width: min(220px, calc(100vw - 24px)); }
 }
 @media (prefers-reduced-motion: reduce) {

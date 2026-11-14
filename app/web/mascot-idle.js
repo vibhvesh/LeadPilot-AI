@@ -3,6 +3,12 @@
   const MOUSE_IDLE_MS = 2600;
   const TOUCH_IDLE_MS = 8000;
   const DISMISS_PX = 28;
+  let mouseIdleMs = MOUSE_IDLE_MS;
+
+  function setMouseIdle(ms) {
+    const value = Number(ms);
+    if (value >= 1500 && value <= 10000) mouseIdleMs = value;
+  }
 
   function prefersTouch(signals) {
     const info = signals || {};
@@ -48,11 +54,12 @@
     return {left: Math.round(left), top: Math.round(top), flip: flip, below: below};
   }
 
-  function dockPoint(width, height, viewportWidth, viewportHeight) {
+  function dockPoint(width, height, viewportWidth, viewportHeight, side) {
     const boxW = width || 112;
     const boxH = height || 140;
+    const left = side === "left" ? 12 : Math.max(8, viewportWidth - boxW - 12);
     return {
-      left: Math.max(8, viewportWidth - boxW - 12),
+      left: left,
       top: Math.max(8, viewportHeight - boxH - 12),
     };
   }
@@ -88,7 +95,7 @@
     }
 
     function delay() {
-      return touchMode ? TOUCH_IDLE_MS : MOUSE_IDLE_MS;
+      return touchMode ? TOUCH_IDLE_MS : mouseIdleMs;
     }
 
     function arm() {
@@ -194,6 +201,8 @@
   const api = {
     MOUSE_IDLE_MS: MOUSE_IDLE_MS,
     TOUCH_IDLE_MS: TOUCH_IDLE_MS,
+    setMouseIdle: setMouseIdle,
+    mouseIdle: function () { return mouseIdleMs; },
     DISMISS_PX: DISMISS_PX,
     prefersTouch: prefersTouch,
     isMovingToward: isMovingToward,
