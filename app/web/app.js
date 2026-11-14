@@ -1,6 +1,6 @@
 const TAB_MODULE = {
   overview: "dashboard", leads: "leads", pipeline: "pipeline", followups: "followups",
-  team: "team", reports: "reports", grokbot: "grokbot", bots: "dashboard", users: "users", search: "search",
+  team: "team", reports: "reports", social: "social", pulse: "pulse", grokbot: "grokbot", bots: "dashboard", users: "users", search: "search",
   apis: "apikeys", ai: "ai", geo: "geo", activity: "activity", updates: "comments", settings: "settings",
   games: "games",
 };
@@ -117,6 +117,8 @@ async function boot() {
   applyAccess();
   const route = readLeadRoute();
   const wanted = location.hash.slice(1).split("?")[0];
+  const onSocial = location.pathname.replace(/\/+$/, "") === "/social";
+  const onPulse = location.pathname.replace(/\/+$/, "") === "/pulse";
   const first = document.querySelector(".tab:not([hidden])");
   if (route && can("leads")) {
     const status = route.status || "";
@@ -126,7 +128,9 @@ async function boot() {
       state.previewOnLoad = true;
     }
     show("leads", {url: "/leads" + location.search});
-  } else if ((location.pathname.replace(/\/+$/, "") || "/") === "/games" && can("games")) show("games", {url: "/games"});
+  } else if (onSocial && can("social")) show("social", {url: "/social"});
+  else if (onPulse && can("pulse")) show("pulse", {url: "/pulse"});
+  else if ((location.pathname.replace(/\/+$/, "") || "/") === "/games" && can("games")) show("games", {url: "/games"});
   else if (wanted && document.getElementById(wanted) && can(TAB_MODULE[wanted])) show(wanted);
   else if (first) show(first.dataset.tab);
 }
@@ -138,6 +142,8 @@ const loaders = {
   followups: loadFollowups,
   team: loadTeam,
   reports: loadReports,
+  social: () => window.SocialPage.load(),
+  pulse: () => window.PulsePage.load(),
   grokbot: loadGrok,
   bots: loadBots,
   users: loadUsers,

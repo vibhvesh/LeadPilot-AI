@@ -14,7 +14,7 @@ from app.providers.secrets import delete_key, store_key
 
 router = APIRouter(prefix="/api")
 
-EDITABLE = ("xai", "gemini", "openai", "tavily", "brave")
+EDITABLE = ("xai", "gemini", "openai", "tavily", "brave", "x")
 
 
 @router.get("/providers")

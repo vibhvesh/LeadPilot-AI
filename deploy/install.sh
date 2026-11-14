@@ -47,6 +47,7 @@ OPENAI_API_KEY=""
 TAVILY_API_KEY=""
 BRAVE_API_KEY=""
 SEARCH_API_KEY=""
+X_API_KEY=""
 GROKBOT_WEBHOOK_URL=""
 GROKBOT_WEBHOOK_SECRET=""
 HTTPS_READY="false"
@@ -72,6 +73,7 @@ Flags (also accepted as --flag=value):
   --tavily-api-key KEY
   --brave-api-key KEY
   --search-api-key KEY
+  --x-api-key KEY                 X bearer token. Public read only. Never posts.
   --grokbot-webhook-url URL
   --grokbot-webhook-secret SECRET
   --upgrade                       git pull, install deps, apply schema, restart
@@ -145,6 +147,8 @@ parse_args() {
       --brave-api-key=*) BRAVE_API_KEY="${1#*=}"; shift ;;
       --search-api-key) SEARCH_API_KEY="${2:-}"; shift 2 ;;
       --search-api-key=*) SEARCH_API_KEY="${1#*=}"; shift ;;
+      --x-api-key) X_API_KEY="${2:-}"; shift 2 ;;
+      --x-api-key=*) X_API_KEY="${1#*=}"; shift ;;
       --grokbot-webhook-url) GROKBOT_WEBHOOK_URL="${2:-}"; shift 2 ;;
       --grokbot-webhook-url=*) GROKBOT_WEBHOOK_URL="${1#*=}"; shift ;;
       --grokbot-webhook-secret) GROKBOT_WEBHOOK_SECRET="${2:-}"; shift 2 ;;
@@ -413,6 +417,7 @@ write_env() {
   append_env_if_missing SEARCH_API_KEY "$SEARCH_API_KEY"
   append_env_if_missing TAVILY_API_KEY "$TAVILY_API_KEY"
   append_env_if_missing BRAVE_API_KEY "$BRAVE_API_KEY"
+  append_env_if_missing X_API_KEY "$X_API_KEY"
   append_env_if_missing XAI_API_KEY "$XAI_API_KEY"
   append_env_if_missing GEMINI_API_KEY "$GEMINI_API_KEY"
   append_env_if_missing OPENAI_API_KEY "$OPENAI_API_KEY"

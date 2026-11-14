@@ -236,6 +236,26 @@
       if (snap.commentsEmpty) return {kind: "comments-empty", selector: "#comment-body", facts: {}};
       return {kind: "comments-ready", selector: "#comment-list", facts: {}};
     },
+    social: function (snap) {
+      const social = snap.social || {};
+      if (Number(social.reply) > 0) {
+        return {kind: "social-reply", selector: "#social-feed .social-reply", facts: {count: Number(social.reply)}};
+      }
+      if (Number(social.engage) > 0) {
+        return {kind: "social-engage", selector: "#social-feed .social-engage", facts: {count: Number(social.engage)}};
+      }
+      return {kind: "social-clear", selector: "#social-counts", facts: {}};
+    },
+    pulse: function (snap) {
+      const pulse = snap.pulse || {};
+      if (Number(pulse.urgent) > 0) {
+        return {kind: "pulse-urgent", selector: "#pulse-feed .pulse-urgent", facts: {count: Number(pulse.urgent)}};
+      }
+      if (Number(pulse.week) > 0) {
+        return {kind: "pulse-week", selector: "#pulse-feed .pulse-week", facts: {count: Number(pulse.week)}};
+      }
+      return {kind: "pulse-clear", selector: "#pulse-counts", facts: {}};
+    },
   };
 
   function choose(snapshot) {
@@ -263,6 +283,15 @@
         company: row.getAttribute("data-company") || "",
       };
     });
+  }
+
+  function countLine(text, patterns) {
+    const counts = {};
+    Object.keys(patterns).forEach(function (key) {
+      const match = String(text || "").match(patterns[key]);
+      counts[key] = match ? Number(match[1]) || 0 : 0;
+    });
+    return counts;
   }
 
   function read(doc, now) {
@@ -318,6 +347,8 @@
         return {label: card.getAttribute("data-activity"), value: num ? Number(String(num.textContent).replace(/[^\d.-]/g, "")) || 0 : 0};
       }),
       commentsEmpty: shownText(doc.getElementById("comment-list")).indexOf("No updates yet") !== -1,
+      social: countLine(shownText(doc.getElementById("social-counts")), {reply: /(\d+)\s+to reply/i, engage: /(\d+)\s+to engage/i}),
+      pulse: countLine(shownText(doc.getElementById("pulse-counts")), {urgent: /(\d+)\s+urgent/i, week: /(\d+)\s+this week/i}),
       overview: {
         followupsOpen: followMatch ? Number(followMatch[1]) : 0,
         banner: !!(banner && !banner.hidden),

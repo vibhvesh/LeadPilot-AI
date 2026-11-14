@@ -185,6 +185,11 @@ assert.equal(insights.choose({
   leads: [{id: 1, score: 9, status: "New", company: "Ignored"}],
 }).kind, "preview");
 assert.match(quip("hanuman", {kind: "preview", facts: {}}), /Here's the summary!/);
+assert.equal(insights.choose({page: "social", social: {reply: 2, engage: 1}}).kind, "social-reply");
+assert.equal(insights.choose({page: "social", social: {reply: 0, engage: 0}}).kind, "social-clear");
+assert.equal(insights.choose({page: "pulse", pulse: {urgent: 1, week: 3}}).facts.count, 1);
+assert.equal(insights.choose({page: "pulse", pulse: {urgent: 0, week: 2}}).kind, "pulse-week");
+assert.match(quip("mango", insights.choose({page: "pulse", pulse: {urgent: 2, week: 0}})), /urgent/i);
 
 const kinds = cast.flatMap((id) => [
   quip(id, leads),

@@ -1,6 +1,6 @@
 # CanberraAI LeadPilot
 
-LeadPilot (TMS-LEAD) is the LinkTMS lead workspace. The browser UI keeps the demo’s sections — dashboard, leads, pipeline, follow-ups, team, reports, GrokBot, user administration, search, API keys, AI routing, geographic targeting, activity, comments, and settings — and those sections now read and write a real database.
+LeadPilot (TMS-LEAD) is the LinkTMS lead workspace. The browser UI keeps the demo’s sections — dashboard, leads, pipeline, follow-ups, team, reports, social, industry pulse, GrokBot, user administration, search, API keys, AI routing, geographic targeting, activity, comments, and settings — and those sections now read and write a real database.
 
 GitHub Pages cannot run this service. The FastAPI app serves both the API and the UI. The Pages site can stay up as the old static preview.
 
@@ -14,12 +14,14 @@ GitHub Pages cannot run this service. The FastAPI app serves both the API and th
 | `app/search` | Saved target profiles, web search, normalization, deduplication. |
 | `app/ai_search` | Natural-language search: plan, query, read pages, extract, then save leads. |
 | `app/bot` | Grok Bot API tokens, deep-search requests, and the outbound webhook. |
+| `app/social` | Social feed of public posts, Reply / Engage / FYI, and copy-only reply drafts. |
+| `app/pulse` | Industry Pulse flashcards for staffing news, with urgency and team notes. |
 | `app/agents` | Orchestrator, research, enrichment, qualification, outreach draft, quality. |
 | `app/providers` | Encrypted provider keys, role quotas, xAI / Gemini / OpenAI clients. |
 | `app/audit` | Sign-ins, searches, model calls, and permission changes. |
 | `app/dashboard` | Counts for the overview, pipeline, and reports. |
 
-`vibhvesh@gmail.com` is the Super Admin and always has every module. A new Google account is stored as **pending** and gets no session until an Admin or the Super Admin approves them. Default Member access covers the lead workspace (dashboard, leads, pipeline, follow-ups, team, reports, GrokBot, search, geo, comments) and not user administration, API keys, activity, or workspace settings. Those defaults can be changed; every API route checks the stored permission.
+`vibhvesh@gmail.com` is the Super Admin and always has every module. A new Google account is stored as **pending** and gets no session until an Admin or the Super Admin approves them. Default Member access covers the lead workspace (dashboard, leads, pipeline, follow-ups, team, reports, social, industry pulse, GrokBot, search, geo, comments) and not user administration, API keys, activity, or workspace settings. Those defaults can be changed; every API route checks the stored permission.
 
 Search uses Tavily or Brave when a key exists. With no search key, a search returns “No search provider configured” and saves nothing. LLM routing on **Auto** uses the first configured xAI, Gemini, or OpenAI key. With no model key, research, scoring, and outreach return “No LLM provider configured”. `DEMO_MODE` only enables local sign-in. Outreach is stored as a draft. There is no send action. A lead becomes Qualified only through review.
 
@@ -77,6 +79,7 @@ Set any of these in the environment, or paste them in **API keys** (admins only)
 | `OPENAI_API_KEY` | OpenAI. Default model `OPENAI_MODEL`. |
 | `TAVILY_API_KEY` | Tavily web search. |
 | `BRAVE_API_KEY` | Brave web search. |
+| `X_API_KEY` | Optional X API bearer token. Used only to read public posts for the Social page. Never used to post, like, or follow. |
 | `AI_SEARCH_MAX_ROUNDS` | How many times AI search rewrites its queries when results are thin. Default `2`. |
 | `GROKBOT_WEBHOOK_URL` | Optional URL that receives a deep-search request. |
 | `GROKBOT_WEBHOOK_SECRET` | Optional secret sent as `X-LeadPilot-Webhook-Secret`. |
@@ -143,7 +146,136 @@ Lead body:
 }
 ```
 
-`company` is required. The server forces `source` to `grokbot`, links `deep_search_request_id`, skips duplicates, and scores the new leads. At most 50 leads per call. The search page shows how many leads came from the app and how many came from Grok Bot.
+`company` is required. The server forces `source` to `grokbot`, links `deep_search_request_id`, skips duplicates, and scores the new leads. At most 50 leads per call. The search page shows how many leads came from the app and how many came from Grok Bot. Sending `social` or `signals` fields on a lead is ignored. Social posts use the endpoint below, not this one.
+
+## Social feed
+
+**Social** in the lead workspace is a read-and-copy page. It groups public posts into **Reply to** (someone asking for vendors, C2C partners, or recruiters), **Engage** (a relevant discussion worth a comment), and **FYI**. Each card shows the link, poster, snippet, why it matters, and a suggested reply. The reply is a draft. LeadPilot does not post it, and it does not sign in to X, LinkedIn, Facebook, Reddit, or job boards.
+
+A person can paste a public link, mark an item done or ignored, and add a note. Those statuses and notes are how the team’s preferences are recorded. `GET /api/bot/social` returns them so a bot can learn what to send next. LinkedIn items are public post links only. The server never requests a LinkedIn login page.
+
+If an X API bearer token is saved under **API keys** (provider `x`) or `X_API_KEY` is set, **Check public posts** reads recent public posts. With no X key, the same button uses Tavily or Brave when one of those keys exists, and keeps only public social links. With neither key, paste a link by hand.
+
+Bot auth is the same bearer token as the lead ingest API.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/bot/social` | Create or refresh social items. `request_id` is optional and is not required. |
+| `GET` | `/api/bot/social?status=` | Read items, including `done` and `ignored`, plus team notes. `status` may be `open`, `done`, `ignored`, or `all` (the default). |
+
+`POST /api/bot/social` accepts `{ "items": [ ... ] }` or one object with a `url`. At most 50 items. The same canonical URL is updated in place and does **not** reset a done or ignored status. A missing `bucket` is classified on the server. `bucket` may be `reply`, `engage`, or `fyi` (aliases such as `reply_to` are accepted).
+
+```json
+{
+  "items": [
+    {
+      "platform": "x",
+      "url": "https://x.com/alexrivera/status/1234567890",
+      "poster_name": "Alex Rivera",
+      "poster_role": "Talent acquisition lead",
+      "posted_at": "2026-11-13T15:04:00Z",
+      "snippet": "Looking for C2C vendors who can staff US-based Java roles. H1B ok.",
+      "topic": "C2C Java",
+      "company": "Northwind Systems",
+      "discussion_key": "northwind-c2c-java",
+      "bucket": "reply",
+      "why_it_matters": "Direct ask for C2C vendor partners on a US IT role.",
+      "suggested_reply": "Hi Alex — we staff US-based Java engineers on C2C and can share three profiles today.",
+      "work_auth": "C2C, H1B"
+    },
+    {
+      "platform": "reddit",
+      "url": "https://www.reddit.com/r/recruiting/comments/abc123/vendor_friendly_devops/",
+      "poster_name": "hiringmgr",
+      "snippet": "Our SI is hiring a DevOps contractor. Curious what others pay for W2 vs C2C.",
+      "topic": "DevOps rates",
+      "company": "Fabrikam",
+      "discussion_key": "fabrikam-devops-rates",
+      "bucket": "engage"
+    },
+    {
+      "platform": "linkedin",
+      "url": "https://www.linkedin.com/posts/casey-lee_activity-987",
+      "snippet": "Photos from the Austin IT leadership breakfast.",
+      "topic": "Austin breakfast",
+      "bucket": "fyi"
+    }
+  ]
+}
+```
+
+`company` is optional text for filtering. It is not a lead record, and these posts are not shown on the lead page. `discussion_key` groups a thread. When it is omitted, items that share a company and a topic are grouped. The response is `{ "created", "updated", "skipped", "items" }`.
+
+Signed-in routes, under the `social` module (members can view and manage by default):
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/social` | Feed. Filters: `platform`, `topic`, `company`, `date_from`, `date_to`, `status` (`open` by default), `bucket`, `q`. |
+| `POST` | `/api/social` | Save one public link. |
+| `POST` | `/api/social/fetch` | Optional read of public posts when an X or search key exists. |
+| `PATCH` | `/api/social/{id}` | `{"status": "done"\|"ignored"\|"open"}`. |
+| `POST` | `/api/social/{id}/comments` | `{"body": "Skip bench-only posts"}`. |
+
+## Industry Pulse
+
+**Industry Pulse** is a separate page of flashcards about US IT staffing: H-1B and C2C policy, vendor management, and hiring trends. Each card has a headline, a one- or two-line reason it matters, an urgency (**Urgent**, **This week**, or **FYI**, with urgent first), a source type (**Web news**, **Forum**, or **Social discussion**), one or more source links, and a date.
+
+Cards can be marked read or dismissed, and the team can add notes. Those statuses are how preferences are recorded. `GET /api/bot/pulse` returns them. The page never posts and never signs in to a news site or social network.
+
+**Check public news** runs only when a Tavily or Brave key is configured. Otherwise paste a story by hand.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/bot/pulse` | Create or refresh cards. Same bearer token as `/api/bot/leads`. |
+| `GET` | `/api/bot/pulse?status=` | Read cards, including `read` and `dismissed`, plus notes. `status` may be `open`, `read`, `dismissed`, or `all` (the default). |
+
+`POST /api/bot/pulse` accepts `{ "items": [ ... ] }` or one object with a `headline` and `url`. At most 50 items. The same canonical URL is updated in place and does **not** reset a read or dismissed status. A missing `urgency` is classified on the server. `urgency` may be `urgent`, `week`, or `fyi`. `source_type` may be `news`, `forum`, or `social`. `links` is optional and may be a list of URLs or `{ "url": "..." }` objects.
+
+```json
+{
+  "items": [
+    {
+      "headline": "USCIS fee rule for H-1B petitions takes effect Monday",
+      "why_it_matters": "Vendor-placed H-1B consultants may cost more to start, which changes which C2C reqs are worth submitting this week.",
+      "urgency": "urgent",
+      "source_type": "news",
+      "url": "https://news.example/uscis-h1b-fee-rule",
+      "links": [
+        "https://news.example/uscis-h1b-fee-rule",
+        {"url": "https://news.example/uscis-h1b-fee-rule-analysis"}
+      ],
+      "published_at": "2026-11-13",
+      "topic": "H-1B policy"
+    },
+    {
+      "headline": "Bill rates for US IT contractors are slipping this month",
+      "url": "https://www.reddit.com/r/recruiting/comments/rates1/bill_rates",
+      "published_at": "2026-11-01",
+      "topic": "Bill rates"
+    },
+    {
+      "headline": "Recap of a staffing conference in Dallas",
+      "url": "https://www.linkedin.com/posts/staffing-weekly_dallas-recap",
+      "published_at": "2026-10-02",
+      "urgency": "fyi",
+      "source_type": "social",
+      "topic": "Conference"
+    }
+  ]
+}
+```
+
+The second item has no `urgency` or `source_type`. The server classifies it as **This week** from the headline and as **Forum** because the link is Reddit. The response is `{ "created", "updated", "skipped", "items" }`.
+
+Signed-in routes, under the `pulse` module (members can view and manage by default):
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/pulse` | Cards, urgent first. Filters: `urgency`, `source_type`, `topic`, `date_from`, `date_to`, `status` (`open` by default), `q`. |
+| `POST` | `/api/pulse` | Save one story. |
+| `POST` | `/api/pulse/fetch` | Optional read of public stories when a Tavily or Brave key exists. |
+| `PATCH` | `/api/pulse/{id}` | `{"status": "read"\|"dismissed"\|"open"}`. |
+| `POST` | `/api/pulse/{id}/comments` | `{"body": "Track the fee rule"}`. |
 
 ## Talk to Bots
 

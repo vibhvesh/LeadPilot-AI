@@ -4,7 +4,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.core.permissions import DEFAULT_ROLE_PERMISSIONS, MODULE_KEYS
+from app.core.permissions import DEFAULT_ROLE_PERMISSIONS
 from app.models import LLMConfig, ProviderAccess, RolePermission, User, WorkspaceSettings
 from app.search.presets import IDEAL_CUSTOMER, apply_icp_defaults, seed_presets
 
@@ -49,13 +49,15 @@ def ensure_role_permissions(db: Session) -> None:
                 )
         db.flush()
         return
-    for module in MODULE_KEYS:
-        row = db.scalar(select(RolePermission).where(RolePermission.role == "super_admin", RolePermission.module == module))
-        if row is None:
-            db.add(RolePermission(role="super_admin", module=module, can_view=True, can_manage=True))
-        else:
-            row.can_view = True
-            row.can_manage = True
+    for role, modules in DEFAULT_ROLE_PERMISSIONS.items():
+        for module, flags in modules.items():
+            row = db.scalar(select(RolePermission).where(RolePermission.role == role, RolePermission.module == module))
+            if row is None:
+                db.add(RolePermission(role=role, module=module, can_view=flags["view"], can_manage=flags["manage"]))
+            elif role == "super_admin":
+                row.can_view = True
+                row.can_manage = True
+    db.flush()
 
 
 def ensure_provider_access(db: Session) -> None:

@@ -272,6 +272,12 @@
     "activity-today": ["Activities today: {count}. Hopping almost counts."],
     "comments-empty": ["No workspace updates yet. The silence is very professional."],
     "comments-ready": ["Updates are posted. I left them on the page, un-roasted."],
+    "social-reply": ["{count} post{s} to reply to. Copy the draft. I will not post it for you."],
+    "social-engage": ["{count} discussion{s} worth a comment. Still your fingers, not mine."],
+    "social-clear": ["The social feed has nothing waiting. Copy stays a human job."],
+    "pulse-urgent": ["{count} urgent staffing card{s}. The red edge is the one I would read first."],
+    "pulse-week": ["{count} staffing card{s} for this week. Not a siren. Still worth a glance."],
+    "pulse-clear": ["Industry Pulse is quiet. No urgent headline on the board."],
   };
 
   function spice(id, line) {

@@ -59,6 +59,10 @@ def _search_backend(provider: str, key: str, query: str, limit: int) -> list[dic
 
 
 def tavily_search(api_key: str, query: str, limit: int) -> list[dict]:
+    return parse_tavily_results(_tavily_payload(api_key, query, limit))
+
+
+def _tavily_payload(api_key: str, query: str, limit: int) -> dict:
     try:
         with httpx.Client(timeout=30) as client:
             response = client.post(
@@ -66,10 +70,9 @@ def tavily_search(api_key: str, query: str, limit: int) -> list[dict]:
                 json={"api_key": api_key, "query": query, "max_results": limit, "include_answer": False},
             )
             response.raise_for_status()
-            payload = response.json()
+            return response.json()
     except httpx.HTTPError as exc:
         raise AppError(f"Tavily search failed: {exc.__class__.__name__}", 502) from exc
-    return parse_tavily_results(payload)
 
 
 def parse_tavily_results(payload: dict) -> list[dict]:
@@ -80,6 +83,10 @@ def parse_tavily_results(payload: dict) -> list[dict]:
 
 
 def brave_search(api_key: str, query: str, limit: int) -> list[dict]:
+    return parse_brave_results(_brave_payload(api_key, query, limit))
+
+
+def _brave_payload(api_key: str, query: str, limit: int) -> dict:
     try:
         with httpx.Client(timeout=30) as client:
             response = client.get(
@@ -88,10 +95,34 @@ def brave_search(api_key: str, query: str, limit: int) -> list[dict]:
                 headers={"Accept": "application/json", "X-Subscription-Token": api_key},
             )
             response.raise_for_status()
-            payload = response.json()
+            return response.json()
     except httpx.HTTPError as exc:
         raise AppError(f"Brave search failed: {exc.__class__.__name__}", 502) from exc
-    return parse_brave_results(payload)
+
+
+def search_documents(db, query: str, limit: int = 10) -> tuple[str, list[dict]]:
+    """Public pages as title, url, and snippet. A company name is not required."""
+    provider, key = choose_search_provider(db)
+    bounded = max(1, min(int(limit or 10), 10))
+    if provider == "tavily":
+        payload = _tavily_payload(key or "", query, bounded)
+        raw_rows = payload.get("results") or []
+        rows = [
+            {"title": item.get("title") or "", "url": item.get("url") or "", "snippet": item.get("content") or ""}
+            for item in raw_rows
+            if isinstance(item, dict)
+        ]
+    elif provider == "brave":
+        payload = _brave_payload(key or "", query, bounded)
+        raw_rows = (payload.get("web") or {}).get("results") or []
+        rows = [
+            {"title": item.get("title") or "", "url": item.get("url") or "", "snippet": item.get("description") or ""}
+            for item in raw_rows
+            if isinstance(item, dict)
+        ]
+    else:
+        raise AppError(NO_SEARCH_PROVIDER, 400)
+    return provider, [row for row in rows if row["url"]]
 
 
 def parse_brave_results(payload: dict) -> list[dict]:
