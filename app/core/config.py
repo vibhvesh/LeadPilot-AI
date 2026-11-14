@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     search_api_key: str = ""
     tavily_api_key: str = ""
     brave_api_key: str = ""
+    x_api_key: str = ""
 
     xai_api_key: str = ""
     gemini_api_key: str = ""

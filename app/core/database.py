@@ -35,6 +35,11 @@ def init_database(url: str) -> None:
 
     Base.metadata.create_all(engine)
     _ensure_columns(engine)
+    from app.social.schema import upgrade as upgrade_social
+    from app.pulse.schema import upgrade as upgrade_pulse
+
+    upgrade_social(engine)
+    upgrade_pulse(engine)
 
 
 def _ensure_columns(bound) -> None:

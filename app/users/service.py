@@ -132,6 +132,7 @@ def set_user_permissions(db: Session, actor: User, user_id: int, permissions: di
     existing = db.scalars(select(UserPermission).where(UserPermission.user_id == target.id)).all()
     for row in existing:
         db.delete(row)
+    db.flush()
     for module, flags in _clean_permissions(permissions).items():
         db.add(
             UserPermission(

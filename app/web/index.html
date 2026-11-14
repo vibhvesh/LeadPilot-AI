@@ -25,6 +25,8 @@
     <button class="tab" data-tab="followups" type="button">◷ Follow-ups</button>
     <button class="tab" data-tab="team" type="button">♧ Team</button>
     <button class="tab" data-tab="reports" type="button">▤ Reports</button>
+    <button class="tab" data-tab="social" type="button">◉ Social</button>
+    <button class="tab" data-tab="pulse" type="button">◌ Industry Pulse</button>
     <button class="tab" data-tab="grokbot" type="button">✦ GrokBot</button>
     <button class="tab" data-tab="bots" type="button">💬 Bots <span id="bots-badge" class="badge" hidden>0</span></button>
   </nav>
@@ -120,6 +122,79 @@
     <div class="card"><h2>Leads by country</h2><div id="report-countries"></div></div>
   </section>
 
+  <section id="social" class="page">
+    <div class="heading"><div><h1>Social</h1><div class="muted">Who is talking about vendor-friendly US IT hiring. Copy a reply and post it yourself.</div></div></div>
+    <div class="note" id="social-safety">LeadPilot never posts, likes, or signs in to X, LinkedIn, Facebook, Reddit, or job boards. Drafts stay on this page until you copy them.</div>
+    <div class="card" id="social-add" data-manage="social">
+      <h2>Add a public link</h2>
+      <div class="split3">
+        <div class="field"><label for="social-url">Post link</label><input id="social-url" placeholder="https://x.com/… or a public LinkedIn post"></div>
+        <div class="field"><label for="social-platform">Platform</label><select id="social-platform"><option value="">Detect from the link</option><option value="x">X</option><option value="linkedin">LinkedIn</option><option value="facebook">Facebook</option><option value="reddit">Reddit</option><option value="job_board">Job board</option><option value="other">Other</option></select></div>
+        <div class="field"><label for="social-bucket">Section</label><select id="social-bucket"><option value="">Decide from the text</option><option value="reply">Reply to</option><option value="engage">Engage</option><option value="fyi">FYI</option></select></div>
+        <div class="field"><label for="social-poster">Poster</label><input id="social-poster" placeholder="Name"></div>
+        <div class="field"><label for="social-role">Role</label><input id="social-role" placeholder="Talent lead"></div>
+        <div class="field"><label for="social-date">Date</label><input id="social-date" type="date"></div>
+        <div class="field"><label for="social-topic">Topic</label><input id="social-topic" placeholder="C2C Java"></div>
+        <div class="field"><label for="social-company">Company mentioned</label><input id="social-company" placeholder="Optional"></div>
+      </div>
+      <div class="field"><label for="social-snippet">What they said</label><textarea id="social-snippet" placeholder="Short quote or summary"></textarea></div>
+      <div class="row">
+        <button class="btn" type="button" id="social-save">Save link</button>
+        <button class="btn secondary" type="button" id="social-fetch">Check public posts</button>
+      </div>
+      <p class="muted" id="social-fetch-note"></p>
+    </div>
+    <form class="card" id="social-filters">
+      <div class="split3">
+        <div class="field"><label for="social-filter-platform">Platform</label><select id="social-filter-platform"><option value="">All</option><option value="x">X</option><option value="linkedin">LinkedIn</option><option value="facebook">Facebook</option><option value="reddit">Reddit</option><option value="job_board">Job board</option><option value="other">Other</option></select></div>
+        <div class="field"><label for="social-filter-topic">Topic</label><input id="social-filter-topic" placeholder="C2C, H1B, a role"></div>
+        <div class="field"><label for="social-filter-company">Company</label><input id="social-filter-company" placeholder="Company mentioned"></div>
+        <div class="field"><label for="social-filter-from">From</label><input id="social-filter-from" type="date"></div>
+        <div class="field"><label for="social-filter-to">To</label><input id="social-filter-to" type="date"></div>
+        <div class="field"><label for="social-filter-status">Status</label><select id="social-filter-status"><option value="open">Open</option><option value="done">Done</option><option value="ignored">Ignored</option><option value="all">All</option></select></div>
+      </div>
+      <button class="btn secondary" type="submit">Apply filters</button>
+    </form>
+    <p class="muted" id="social-counts"></p>
+    <div class="social-sections" id="social-feed"></div>
+  </section>
+
+  <section id="pulse" class="page">
+    <div class="heading"><div><h1>Industry Pulse</h1><div class="muted">What is happening in US IT staffing. Urgent cards come first.</div></div></div>
+    <div class="note">Industry Pulse only reads public news and discussions. It never posts or signs in to a source.</div>
+    <div class="card" data-manage="pulse">
+      <h2>Add a story</h2>
+      <div class="split3">
+        <div class="field"><label for="pulse-headline">Headline</label><input id="pulse-headline" placeholder="USCIS fee rule takes effect Monday"></div>
+        <div class="field"><label for="pulse-url">Source link</label><input id="pulse-url" placeholder="https://…"></div>
+        <div class="field"><label for="pulse-date">Date</label><input id="pulse-date" type="date"></div>
+        <div class="field"><label for="pulse-urgency">Urgency</label><select id="pulse-urgency"><option value="">Decide from the headline</option><option value="urgent">Urgent</option><option value="week">This week</option><option value="fyi">FYI</option></select></div>
+        <div class="field"><label for="pulse-source">Source type</label><select id="pulse-source"><option value="">Detect from the link</option><option value="news">Web news</option><option value="forum">Forum</option><option value="social">Social discussion</option></select></div>
+        <div class="field"><label for="pulse-topic">Topic</label><input id="pulse-topic" placeholder="H-1B policy"></div>
+      </div>
+      <div class="field"><label for="pulse-why">Why it matters</label><textarea id="pulse-why" placeholder="One or two lines. Leave blank to draft a short line."></textarea></div>
+      <div class="field"><label for="pulse-links">More links</label><textarea id="pulse-links" placeholder="One public link per line"></textarea></div>
+      <div class="row">
+        <button class="btn" type="button" id="pulse-save">Save story</button>
+        <button class="btn secondary" type="button" id="pulse-fetch">Check public news</button>
+      </div>
+      <p class="muted" id="pulse-fetch-note"></p>
+    </div>
+    <form class="card" id="pulse-filters">
+      <div class="split3">
+        <div class="field"><label for="pulse-filter-urgency">Urgency</label><select id="pulse-filter-urgency"><option value="">All</option><option value="urgent">Urgent</option><option value="week">This week</option><option value="fyi">FYI</option></select></div>
+        <div class="field"><label for="pulse-filter-source">Source</label><select id="pulse-filter-source"><option value="">All</option><option value="news">Web news</option><option value="forum">Forum</option><option value="social">Social discussion</option></select></div>
+        <div class="field"><label for="pulse-filter-topic">Topic</label><input id="pulse-filter-topic" placeholder="H-1B, C2C, rates"></div>
+        <div class="field"><label for="pulse-filter-from">From</label><input id="pulse-filter-from" type="date"></div>
+        <div class="field"><label for="pulse-filter-to">To</label><input id="pulse-filter-to" type="date"></div>
+        <div class="field"><label for="pulse-filter-status">Status</label><select id="pulse-filter-status"><option value="open">Unread</option><option value="read">Read</option><option value="dismissed">Dismissed</option><option value="all">All</option></select></div>
+      </div>
+      <button class="btn secondary" type="submit">Apply filters</button>
+    </form>
+    <p class="muted" id="pulse-counts"></p>
+    <div class="pulse-grid" id="pulse-feed"></div>
+  </section>
+
   <section id="grokbot" class="page">
     <div class="heading"><div><h1>GrokBot Agent Workspace</h1><div class="muted">Research, enrich, score, and draft outreach. Nothing is sent automatically.</div></div></div>
     <p class="error" id="agent-provider-status" hidden></p>
@@ -193,7 +268,7 @@
     <div class="grid2">
       <div class="card">
         <h2>Store a provider key</h2>
-        <div class="field"><label>Provider</label><select id="key-provider"><option value="xai">xAI / Grok</option><option value="gemini">Gemini</option><option value="openai">OpenAI</option><option value="tavily">Tavily search</option><option value="brave">Brave search</option></select></div>
+        <div class="field"><label>Provider</label><select id="key-provider"><option value="xai">xAI / Grok</option><option value="gemini">Gemini</option><option value="openai">OpenAI</option><option value="tavily">Tavily search</option><option value="brave">Brave search</option><option value="x">X API (public read)</option></select></div>
         <div class="field"><label>API key</label><input id="key-value" type="password" autocomplete="off" placeholder="Paste once. It will not be shown again."></div>
         <button class="btn" type="button" id="key-save" data-manage="apikeys">Save key on server</button>
         <div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>Provider</th><th>Status</th><th>Hint</th><th></th></tr></thead><tbody id="key-rows"></tbody></table></div>
@@ -335,6 +410,8 @@
 <script src="/static/pipeline-ui.js"></script>
 <script src="/static/lead-summary.js"></script>
 <script src="/static/lead-preview.js"></script>
+<script src="/static/social-ui.js"></script>
+<script src="/static/pulse-ui.js"></script>
 <script src="/static/mascot.js"></script>
 </body>
 </html>

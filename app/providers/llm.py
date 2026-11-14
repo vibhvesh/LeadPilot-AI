@@ -107,8 +107,9 @@ def provider_catalog(db: Session) -> list[dict]:
         "openai": settings.openai_api_key,
         "tavily": settings.tavily_api_key or (settings.search_api_key if settings.search_provider in {"auto", "tavily"} else ""),
         "brave": settings.brave_api_key or (settings.search_api_key if settings.search_provider == "brave" else ""),
+        "x": settings.x_api_key,
     }
-    return [secret_status(db, name, env.get(name, "")) for name in ("xai", "gemini", "openai", "tavily", "brave")]
+    return [secret_status(db, name, env.get(name, "")) for name in ("xai", "gemini", "openai", "tavily", "brave", "x")]
 
 
 def _has_key(db, settings, provider: str) -> bool:

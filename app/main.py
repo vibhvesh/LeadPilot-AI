@@ -28,6 +28,10 @@ from app.leads.router import router as leads_router
 from app.providers.router import router as providers_router
 from app.search.router import router as search_router
 from app.settings.router import router as settings_router
+from app.social.bot_router import router as social_bot_router
+from app.social.router import router as social_router
+from app.pulse.bot_router import router as pulse_bot_router
+from app.pulse.router import router as pulse_router
 from app.users.router import router as users_router
 
 WEB = Path(__file__).resolve().parent / "web"
@@ -96,6 +100,10 @@ def create_app() -> FastAPI:
     app.include_router(comments_router)
     app.include_router(audit_router)
     app.include_router(settings_router)
+    app.include_router(social_router)
+    app.include_router(social_bot_router)
+    app.include_router(pulse_router)
+    app.include_router(pulse_bot_router)
 
     @app.get("/health")
     def health():
@@ -110,6 +118,18 @@ def create_app() -> FastAPI:
 
     @app.get("/")
     def home(request: Request):
+        if not _approved(request):
+            return RedirectResponse("/login", status_code=302)
+        return FileResponse(WEB / "index.html")
+
+    @app.get("/social")
+    def social_page(request: Request):
+        if not _approved(request):
+            return RedirectResponse("/login", status_code=302)
+        return FileResponse(WEB / "index.html")
+
+    @app.get("/pulse")
+    def pulse_page(request: Request):
         if not _approved(request):
             return RedirectResponse("/login", status_code=302)
         return FileResponse(WEB / "index.html")
