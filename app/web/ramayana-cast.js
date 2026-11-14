@@ -301,17 +301,22 @@
     </svg>`;
   }
 
+  const STORY_V = "f4d32b8";
+  const SPRITES = {
+    rama: "rama.png", lakshmana: "lakshmana.png", sita: "sita.png", hanuman: "hanuman.png",
+    jambavan: "jambavan.png", sugriva: "sugriva.png", vibhishana: "vibhishana.png",
+    ravana: "ravana.png", kumbhakarna: "kumbhakarna.png", narad: "narad.png",
+    "rocket-boss": "rocket-boss.png", "old-man-boss": "old-man-boss.png",
+    "team-1": "team-1.png", "team-2": "team-2.png", "team-3": "team-3.png", "team-4": "team-4.png",
+    "team-5": "team-5.png", "team-6": "team-6.png", "team-7": "team-7.png", "team-8": "team-8.png",
+  };
+
   function svg(id) {
-    const drawn = {
-      rama, lakshmana, sita, hanuman, jambavan, sugriva, vibhishana, ravana, kumbhakarna, narad,
-      "rocket-boss": rocketBoss,
-      "old-man-boss": oldManBoss,
-      valmiki: valmiki,
-    }[id];
-    if (drawn) return drawn();
-    const teamMatch = /^team-(\d)$/.exec(id || "");
-    if (teamMatch) return team(Number(teamMatch[1]) - 1);
-    return person({ skin: "#f0c9a0", cloth: "#f2c14e" });
+    if (id === "valmiki") return valmiki();
+    const file = SPRITES[id];
+    if (!file) return "";
+    const mark = id === "hanuman" ? " story-hanuman-sprite" : "";
+    return `<img class="story-sprite${mark}" alt="" draggable="false" src="/static/story/${file}?v=${STORY_V}">`;
   }
 
   function name(id) {
@@ -320,7 +325,7 @@
     return teamMatch ? `Team ${teamMatch[1]}` : id;
   }
 
-  const api = { svg, name, ids: Object.keys(NAMES).concat(["team-1", "team-2", "team-3", "team-4", "team-5", "team-6", "team-7"]) };
+  const api = { svg, name, STORY_V, ids: Object.keys(NAMES).concat(["team-1", "team-2", "team-3", "team-4", "team-5", "team-6", "team-7", "team-8"]) };
   root.RamayanaCast = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

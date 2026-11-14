@@ -35,23 +35,17 @@ const blob = list.map((scene) => `${scene.title} ${scene.caption} ${Object.value
 });
 assert.equal(blob.includes("elon"), false);
 
-const rocket = cast.svg("rocket-boss");
-["rocket-sunglasses", "rocket-cape", "rocket-jetpack", "rocket-gada", "rocket-shirt", "story-flame", "rocket-hair", "rocket-goatee"].forEach((token) => {
-  assert.match(rocket, new RegExp(token));
+["rama", "lakshmana", "sita", "hanuman", "jambavan", "sugriva", "vibhishana", "ravana", "kumbhakarna", "narad", "rocket-boss", "old-man-boss"].forEach((id) => {
+  const markup = cast.svg(id);
+  assert.match(markup, new RegExp(`/static/story/${id}\\.png\\?v=`));
+  assert.match(markup, /<img/);
+  assert.equal(/elon|cigar/i.test(markup), false);
 });
-assert.equal(/elon|cigar/i.test(rocket), false);
-
-const elder = cast.svg("old-man-boss");
-["old-hair", "old-moustache", "old-sweater", "old-watch", "old-stick", "old-finger", "old-shoe"].forEach((token) => {
-  assert.match(elder, new RegExp(token));
-});
+assert.match(cast.svg("hanuman"), /story-hanuman-sprite/);
+for (let team = 1; team <= 8; team += 1) assert.match(cast.svg(`team-${team}`), new RegExp(`/static/story/team-${team}\\.png`));
 assert.equal(cast.name("old-man-boss"), "Old Man Boss");
-["rama", "lakshmana", "sita", "hanuman", "jambavan", "sugriva", "vibhishana", "ravana", "kumbhakarna", "narad"].forEach((id) => {
-  assert.match(cast.svg(id), /story-leg/);
-});
-assert.match(cast.svg("hanuman"), /story-tail/);
-assert.equal((cast.svg("ravana").match(/ravana-head/g) || []).length, 10);
-for (let team = 1; team <= 7; team += 1) assert.match(cast.svg(`team-${team}`), /story-extra/);
+assert.equal(cast.STORY_V, boot.STORY_V);
+assert.ok(cast.STORY_V);
 
 const sample = list[0];
 const visits = list.map((scene, index) => (scene.blessing ? index : -1)).filter((index) => index >= 0);
