@@ -41,9 +41,9 @@ def test_story_page_is_admin_only_and_stays_off_the_rest_of_the_app(client):
     page = client.get("/admin/character-story")
     assert page.status_code == 200
     assert "Play now" in page.text
-    assert "ramayana-cast.js" in page.text
-    assert "ramayana-story.js" in page.text
-    assert "old-man-boss" in (ROOT / "app/web/ramayana-cast.js").read_text()
+    assert "story-crew.js" in page.text
+    assert "v=crew1" in page.text
+    assert "ramayana-story.js" not in page.text
     assert "mascot-crew.js" not in page.text
     jumped = client.get("/admin/idle-characters", follow_redirects=False)
     assert jumped.status_code == 302
@@ -92,5 +92,6 @@ def test_lines_save_reset_and_overlay_defaults_off(client):
 
 
 def test_story_script_rules():
-    result = subprocess.run(["node", str(ROOT / "tests" / "ramayana_story.test.mjs")], capture_output=True, text=True, check=False)
-    assert result.returncode == 0, result.stdout + result.stderr
+    for name in ("ramayana_story.test.mjs", "story_crew.test.mjs"):
+        result = subprocess.run(["node", str(ROOT / "tests" / name)], capture_output=True, text=True, check=False)
+        assert result.returncode == 0, result.stdout + result.stderr

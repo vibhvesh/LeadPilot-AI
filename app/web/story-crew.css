@@ -1,0 +1,46 @@
+.story-page { margin: 0 auto; max-width: 920px; padding: 24px 16px 64px; color: #1c2430; font: 16px/1.45 Georgia, serif; background: #f6f1e7; }
+.story-page h1 { font-size: 32px; margin: 0 0 8px; }
+.story-note, .story-switch { display: block; margin: 8px 0; }
+.story-samples { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 16px 0 24px; }
+.story-card { background: #fff; border: 1px solid #e4d8c4; border-radius: 14px; padding: 14px; }
+.story-card button, #story-play { background: #1f4b99; color: #fff; border: 0; border-radius: 8px; padding: 8px 12px; }
+.story-line { display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px; align-items: start; margin: 8px 0; background: #fff; border: 1px solid #e4d8c4; border-radius: 12px; padding: 8px; }
+.story-line textarea { width: 100%; min-height: 48px; }
+.story-line button { background: #1f4b99; color: #fff; border: 0; border-radius: 8px; padding: 6px 10px; }
+.story-save-note { font-size: 13px; color: #2f6b4f; }
+
+.story-crew-layer { position: absolute; inset: 0; pointer-events: none; }
+.story-crew { --crew-h: 70px; position: absolute; height: var(--crew-h); z-index: 2; }
+.story-crew-body { height: 100%; animation: story-crew-bob 0.7s ease-in-out infinite; }
+.story-crew-sprite {
+  height: 100%;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: 600% 100%;
+  animation: story-crew-walk 0.667s steps(6) infinite;
+}
+.story-crew.is-left .story-crew-sprite { transform: scaleX(-1); }
+.story-crew.is-paused .story-crew-body { animation: none; }
+.story-crew.is-paused .story-crew-sprite { animation: none; background-position: 0 0; }
+.story-crew-shadow {
+  position: absolute; left: 18%; right: 18%; bottom: 1px; height: 7px;
+  background: rgba(30, 40, 60, 0.22); border-radius: 50%;
+}
+.story-crew-bubble {
+  position: absolute; left: 50%; bottom: calc(100% + 4px); transform: translateX(-50%);
+  max-width: 120px; margin: 0; padding: 3px 6px; border-radius: 10px;
+  background: #fff8e8; color: #1c2430; font-size: 11px; line-height: 1.3;
+}
+@keyframes story-crew-walk { to { background-position: -500% 0; } }
+@keyframes story-crew-bob { 50% { transform: translateY(-2px); } }
+.story-crew-layer.is-still .story-crew-body,
+.story-crew-layer.is-still .story-crew-sprite { animation: none; }
+
+@media (max-width: 640px) {
+  .story-crew { --crew-h: 55px; }
+  .story-crew-bubble { font-size: 10px; max-width: 96px; }
+  .story-line { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .story-crew-body, .story-crew-sprite { animation: none; }
+}

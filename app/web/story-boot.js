@@ -1,8 +1,8 @@
 /* Arms the story overlay after two minutes of idle. The mascot crew keeps its own timer. */
 (function (root) {
   const IDLE_MS = 120000;
-  const STORY_V = "cut5";
-  const FILES = ["ramayana-cast.js", "ramayana-scenes.js", "ramayana-story.js", "story-overlay.js"];
+  const STORY_V = "crew1";
+  const FILES = ["story-overlay.js", "story-crew.js"];
   let generation = 0;
   let timer = 0;
   let playing = null;
@@ -47,7 +47,7 @@
     if (!document.querySelector("link[data-story-css]")) {
       const link = document.createElement("link");
       link.rel = "stylesheet";
-      link.href = "/static/ramayana-story.css?v=" + STORY_V;
+      link.href = "/static/story-crew.css?v=" + STORY_V;
       link.dataset.storyCss = "1";
       document.head.appendChild(link);
     }
@@ -88,7 +88,7 @@
       overlay = null;
       return;
     }
-    playing = root.RamayanaStory.start(overlay.stage(), { lines: lines, overlay: overlay });
+    playing = root.StoryCrew.start(overlay.stage(), { lines: lines });
   }
 
   function install() {
@@ -105,6 +105,8 @@
       clearPlay();
       arm();
     });
+    const play = document.getElementById("story-play");
+    if (play) play.addEventListener("click", function () { begin(); });
     arm();
   }
 
