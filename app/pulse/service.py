@@ -153,12 +153,7 @@ def list_feed(
     if end is not None:
         statement = statement.where(stamp < end)
     bounded = max(1, min(int(limit or LIST_LIMIT), LIST_LIMIT))
-    statement = statement.order_by(
-        _URGENCY_RANK,
-        PulseItem.published_at.is_(None),
-        PulseItem.published_at.desc(),
-        PulseItem.id.desc(),
-    ).limit(bounded)
+    statement = statement.order_by(_URGENCY_RANK, stamp.desc(), PulseItem.id.desc()).limit(bounded)
     rows = db.scalars(statement).all()
     comments = _comments_for(db, [row.id for row in rows])
     items = [serialize_item(row, comments.get(row.id, [])) for row in rows]

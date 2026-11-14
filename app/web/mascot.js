@@ -17,6 +17,7 @@
   let poseIndex = 0;
   let pinToken = 0;
   let spotlightTimer = 0;
+  let prefs = {enabled: true, idle_ms: 2600, tone: "cheeky", size: "medium", side: "right", character: "hanuman"};
 
   function reducedMotion() {
     return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -89,7 +90,7 @@
     if (!host) return;
     renderCharacter();
     if (currentCue && currentCue.kind && currentCue.kind !== "event" && !bubble.hidden) {
-      const text = window.MascotCharacters.quip(characterId, currentCue);
+      const text = window.MascotCharacters.quip(characterId, Object.assign({tone: prefs.tone}, currentCue));
       currentCue.text = text;
       showBubble(text);
     }
@@ -108,6 +109,7 @@
       <div class="hanuman-tools">
         <button type="button" class="hanuman-name" aria-expanded="false" aria-controls="mascot-picker"></button>
         <button type="button" class="hanuman-next" aria-label="Next mascot">Next</button>
+        <button type="button" class="hanuman-settings">Settings</button>
         <button type="button" class="hanuman-hide">Hide</button>
       </div>`;
     restore = document.createElement("button");
@@ -139,13 +141,20 @@
       const button = event.target.closest("[data-pick]");
       if (button) selectCharacter(button.getAttribute("data-pick"));
     });
+    host.querySelector(".hanuman-settings").addEventListener("click", function () {
+      if (window.MascotSettings) window.MascotSettings.open();
+    });
     host.querySelector(".hanuman-hide").addEventListener("click", function () {
+      prefs.enabled = false;
       setHidden(true);
       applyVisibility();
+      if (window.MascotSettings) window.MascotSettings.save({enabled: false});
     });
     restore.addEventListener("click", function () {
+      prefs.enabled = true;
       setHidden(false);
       applyVisibility();
+      if (window.MascotSettings) window.MascotSettings.save({enabled: true});
     });
     document.addEventListener("keydown", function (event) {
       if (event.key === "Escape" && picker && !picker.hidden) closePicker();
@@ -242,7 +251,7 @@
       restorePose();
       return;
     }
-    const dock = window.MascotIdle.dockPoint(host.offsetWidth || 112, host.offsetHeight || 140, window.innerWidth, window.innerHeight);
+    const dock = window.MascotIdle.dockPoint(host.offsetWidth || 112, host.offsetHeight || 140, window.innerWidth, window.innerHeight, prefs.side);
     moveTo(dock.left, dock.top);
     schedulePin();
   }
@@ -256,7 +265,7 @@
     if (hidden()) return;
     closePicker();
     const insight = currentInsight();
-    const text = window.MascotCharacters.quip(characterId, insight);
+    const text = window.MascotCharacters.quip(characterId, Object.assign({tone: prefs.tone}, insight));
     currentCue = Object.assign({}, insight, {text: text});
     showBubble(text);
     visiting = true;
@@ -336,7 +345,7 @@
   function cues() {
     const insight = currentInsight();
     if (!insight) return [];
-    const text = window.MascotCharacters.quip(characterId, insight, function () { return 0; });
+    const text = window.MascotCharacters.quip(characterId, Object.assign({tone: prefs.tone}, insight), function () { return 0; });
     return [Object.assign({}, insight, {text: text})];
   }
 
@@ -350,10 +359,44 @@
     }, 4200);
   }
 
+  function applyLook() {
+    if (!host) return;
+    host.classList.toggle("hanuman-left", prefs.side === "left");
+    host.classList.toggle("hanuman-small", prefs.size === "small");
+    host.classList.toggle("hanuman-large", prefs.size === "large");
+    if (restore) restore.classList.toggle("hanuman-show-left", prefs.side === "left");
+  }
+
+  function usePrefs(next) {
+    const incoming = next || {};
+    if (typeof incoming.enabled === "boolean") prefs.enabled = incoming.enabled;
+    if (incoming.idle_ms) prefs.idle_ms = Number(incoming.idle_ms) || prefs.idle_ms;
+    if (incoming.tone) prefs.tone = incoming.tone;
+    if (incoming.size) prefs.size = incoming.size;
+    if (incoming.side) prefs.side = incoming.side === "left" ? "left" : "right";
+    if (incoming.character && window.MascotCharacters && window.MascotCharacters.byId(incoming.character)) {
+      prefs.character = incoming.character;
+      characterId = incoming.character;
+    }
+    if (window.MascotIdle && window.MascotIdle.setMouseIdle) window.MascotIdle.setMouseIdle(prefs.idle_ms);
+    if (!host) return;
+    applyLook();
+    renderCharacter();
+    setHidden(!prefs.enabled);
+    applyVisibility();
+  }
+
   function start() {
     if (host) return;
     if (!window.MascotCharacters || !window.MascotIdle || !window.MascotInsights) return;
+    if (window.MascotSettings && window.MascotSettings.readLocal) {
+      const stored = window.MascotSettings.readLocal();
+      if (stored) usePrefs(stored);
+      else if (hidden()) prefs.enabled = false;
+    } else if (hidden()) prefs.enabled = false;
+    if (!prefs.enabled) setHidden(true);
     mount();
+    applyLook();
     idleControl = window.MascotIdle.attach({
       onIdle: reveal,
       onMove: function () { if (visiting) goHome(); },
@@ -373,6 +416,9 @@
     cues: cues,
     STORAGE_KEY: STORAGE_KEY,
     setCharacter: selectCharacter,
+    usePrefs: usePrefs,
     current: function () { return characterId; },
   };
+  document.addEventListener("leadpilot:mascot-prefs", function (event) { usePrefs(event.detail || {}); });
+  start();
 })();

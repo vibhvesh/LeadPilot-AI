@@ -313,9 +313,15 @@ def test_manual_link_permissions_and_page(client):
     assert 'data-tab="social"' in page.text
     assert "LeadPilot never posts" in page.text
     assert 'src="/static/mascot.js"' in page.text
+    assert page.text.index('id="social-feed"') < page.text.index('id="social-filters"')
+    assert page.text.index('id="pulse-feed"') < page.text.index('id="pulse-filters"')
+    assert 'id="social-filters-toggle"' in page.text
+    assert 'id="pulse-filters-toggle"' in page.text
+    assert 'src="/static/js/deeplink.js"' in page.text
     assert client.get("/social").status_code == 200
     script = client.get("/static/social-ui.js").text
     assert "Copy reply" in script
+    assert "data-copy-open" in script
     assert "/api/social" in script
     client.post("/auth/logout")
     assert client.get("/social", follow_redirects=False).status_code == 302

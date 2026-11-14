@@ -139,13 +139,5 @@ body.preview-open{overflow:hidden}
 .social-card .draft{margin:8px 0}
 @media(max-width:800px){
   .social-sections{grid-template-columns:1fr}
-  .pulse-grid{grid-template-columns:1fr}
 }
-.pulse-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:stretch;margin-top:12px}
-.pulse-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px}
-.pulse-card h2{font-size:16px;line-height:1.3;margin:0}
-.pulse-urgent{border-top:4px solid #b42318}
-.pulse-week{border-top:4px solid #b45309}
-.pulse-fyi{border-top:4px solid #64748b}
-.pulse-why{margin:0;line-height:1.45}
 .pulse-card a{color:#1d4ed8;font-weight:700;overflow-wrap:anywhere}

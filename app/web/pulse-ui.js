@@ -38,25 +38,43 @@
     }
   }
 
+  function openLink(href, label) {
+    if (window.DeepLink) return window.DeepLink.anchor(href, label);
+    return `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${esc(label)}</a>`;
+  }
+
   function card(item) {
     const links = (item.links || []).map(safeUrl).filter(Boolean);
-    const linkHtml = links.map((href, index) => `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${index === 0 ? "Open source" : "Also " + (index + 1)}</a>`).join(" · ");
+    const primary = links[0] ? openLink(links[0], "Open") : "";
+    const extra = links.slice(1).map((href, index) => openLink(href, "Also " + (index + 2))).join(" ");
     const posted = when(item.published_at || item.created_at);
-    const manage = can("pulse", true) ? `<div class="row">
-        ${item.status === "open" ? `<button class="btn small" type="button" data-pulse-status="read" data-id="${item.id}">Mark read</button><button class="btn small secondary" type="button" data-pulse-status="dismissed" data-id="${item.id}">Dismiss</button>` : `<button class="btn small secondary" type="button" data-pulse-status="open" data-id="${item.id}">Reopen</button>`}
-        <input id="pulse-note-${item.id}" placeholder="Note for the team" aria-label="Note for the team">
-        <button class="btn small secondary" type="button" data-pulse-comment="${item.id}">Add note</button>
-      </div>` : "";
+    const why = item.why_it_matters || "";
+    const more = why.length > 160 ? `<button class="flash-more" type="button" data-more="pulse-why-${item.id}">More</button>` : "";
+    const tone = item.urgency === "urgent" ? "urgent" : item.urgency === "week" ? "week" : "fyi";
     const notes = (item.comments || []).map((comment) => `<div class="muted">${esc(comment.author_name || "Teammate")}: ${esc(comment.body)}</div>`).join("");
     const status = item.status !== "open" ? `<span class="status pending">${esc(item.status)}</span>` : "";
-    return `<article class="pulse-card pulse-${esc(item.urgency)}">
-      <div class="row">${status}<span class="summary-chip">${esc(item.urgency_label)}</span><span class="summary-chip">${esc(item.source_label)}</span></div>
-      <h2>${esc(item.headline)}</h2>
-      <p class="pulse-why">${esc(item.why_it_matters || "")}</p>
-      <div class="muted">${esc([item.topic, posted].filter(Boolean).join(" · "))}</div>
-      <div>${linkHtml}</div>
+    const menuId = "pulse-more-" + item.id;
+    const menu = [];
+    if (can("pulse", true) && item.status === "open") {
+      menu.push(`<button type="button" role="menuitem" data-pulse-status="read" data-id="${item.id}">Mark read</button>`);
+      menu.push(`<button type="button" role="menuitem" data-pulse-status="dismissed" data-id="${item.id}">Dismiss</button>`);
+    } else if (can("pulse", true)) {
+      menu.push(`<button type="button" role="menuitem" data-pulse-status="open" data-id="${item.id}">Reopen</button>`);
+    }
+    if (can("pulse", true)) {
+      menu.push(`<input id="pulse-note-${item.id}" placeholder="Note for the team" aria-label="Note for the team">`);
+      menu.push(`<button type="button" role="menuitem" data-pulse-comment="${item.id}">Add note</button>`);
+    }
+    const overflow = menu.length ? `<div class="overflow"><button class="btn secondary" type="button" data-overflow aria-expanded="false" aria-controls="${menuId}" aria-label="More actions">⋯</button><div class="overflow-menu" id="${menuId}" role="menu" hidden>${menu.join("")}</div></div>` : "";
+    return `<article class="flash-card pulse-card pulse-${esc(item.urgency)}">
+      <div class="flash-kicker">${status}<span class="flash-badge flash-badge-${tone}">${esc(item.urgency_label || "FYI")}</span><span class="flash-chip">${esc(item.source_label || "Source")}</span></div>
+      <h2 class="flash-title">${esc(item.headline)}</h2>
+      <p class="flash-meta">${esc([posted, item.topic].filter(Boolean).join(" · "))}</p>
+      <p class="flash-summary" id="pulse-why-${item.id}">${esc(why)}</p>
+      ${more}
+      ${extra ? `<div class="flash-meta">${extra}</div>` : ""}
       ${notes}
-      ${manage}
+      <div class="flash-actions">${primary}${overflow}</div>
     </article>`;
   }
 
@@ -133,6 +151,17 @@
       if (!button || !root.contains(button)) return;
       if (button.id === "pulse-save") run(save);
       else if (button.id === "pulse-fetch") run(pull);
+      else if (button.id === "pulse-filters-toggle") {
+        const form = $("pulse-filters");
+        const open = form.classList.toggle("is-open");
+        button.setAttribute("aria-expanded", open ? "true" : "false");
+      }
+      else if (button.dataset.more) {
+        const summary = $(button.dataset.more);
+        if (!summary) return;
+        const open = summary.classList.toggle("is-open");
+        button.textContent = open ? "Less" : "More";
+      }
       else if (button.dataset.pulseStatus) run(() => mark(button.dataset.id, button.dataset.pulseStatus));
       else if (button.dataset.pulseComment) run(() => comment(button.dataset.pulseComment));
     });

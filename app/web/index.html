@@ -11,6 +11,10 @@
   <link rel="stylesheet" href="/static/mascot-idle.css">
   <link rel="stylesheet" href="/static/mascot-insights.css">
   <link rel="stylesheet" href="/static/mascot.css">
+  <link rel="stylesheet" href="/static/mascot-settings.css">
+  <link rel="stylesheet" href="/static/cockpit/cockpit.css">
+  <link rel="stylesheet" href="/static/flashcards.css">
+  <link rel="stylesheet" href="/static/nav.css">
   <style>
     #games.page.active{display:flex;flex-direction:column;min-height:calc(100vh - 180px);min-height:calc(100dvh - 180px)}
     .games-frame{width:100%;flex:1 1 auto;height:calc(100vh - 230px);height:calc(100dvh - 230px);min-height:60vh;min-height:60dvh;border:1px solid #e5eaf2;border-radius:11px;background:#fff}
@@ -22,55 +26,31 @@
   </style>
 </head>
 <body>
+<div class="app-frame">
+<nav class="side-nav" aria-label="Workspace">
+  <div class="side-brand">✦</div>
+  <button class="tab nav-item active" data-tab="overview" type="button" aria-label="Home">Home</button>
+  <button class="tab nav-item" data-tab="leads" type="button">Leads</button>
+  <button class="tab nav-item" data-tab="social" type="button">Social</button>
+  <button class="tab nav-item" data-tab="pulse" type="button" aria-label="Pulse, discussions and industry news">Pulse</button>
+  <button class="nav-more" id="nav-more" type="button" aria-expanded="false" aria-controls="more-sheet" aria-haspopup="menu">More</button>
+</nav>
+<div class="app-body">
 <header class="top">
   <div class="brand">✦ LeadPilot AI <small>CANBERRAAI · TMS-LEAD WORKSPACE</small></div>
-  <div class="who"><b id="who-email">…</b><span id="who-role"></span>
-    <div style="margin-top:8px"><button class="btn signout small" id="signout" type="button">Sign out</button></div>
-  </div>
+  <div class="who"><b id="who-email">…</b><span id="who-role"></span></div>
 </header>
 <main class="shell">
-  <div class="group-label">LEAD WORKSPACE</div>
-  <nav class="tabs" aria-label="Lead workspace">
-    <button class="tab active" data-tab="overview" type="button">▦ Overview</button>
-    <button class="tab" data-tab="leads" type="button">♙ Leads</button>
-    <button class="tab" data-tab="pipeline" type="button">▥ Pipeline</button>
-    <button class="tab" data-tab="followups" type="button">◷ Follow-ups</button>
-    <button class="tab" data-tab="team" type="button">♧ Team</button>
-    <button class="tab" data-tab="reports" type="button">▤ Reports</button>
-    <button class="tab" data-tab="social" type="button">◉ Social</button>
-    <button class="tab" data-tab="pulse" type="button">◌ Industry Pulse</button>
-    <button class="tab" data-tab="games" type="button">♟ Games</button>
-    <button class="tab" data-tab="grokbot" type="button">✦ GrokBot</button>
-    <button class="tab" data-tab="bots" type="button">💬 Bots <span id="bots-badge" class="badge" hidden>0</span></button>
-  </nav>
-  <div class="group-label">ADMINISTRATION & CONFIGURATION</div>
-  <nav class="tabs" aria-label="Administration">
-    <button class="tab" data-tab="users" type="button">♙ Users <span id="pending-badge" class="badge" hidden>0</span></button>
-    <button class="tab" data-tab="search" type="button">⌕ Search criteria</button>
-    <button class="tab" data-tab="apis" type="button">⚿ API keys</button>
-    <button class="tab" data-tab="ai" type="button">✦ AI / LLM</button>
-    <button class="tab" data-tab="geo" type="button">◎ Geo target</button>
-    <button class="tab" data-tab="activity" type="button">◴ Activity</button>
-    <button class="tab" data-tab="updates" type="button">▤ Comments</button>
-    <button class="tab" data-tab="settings" type="button">⚙ Settings</button>
-  </nav>
 
   <section id="overview" class="page active">
-    <div class="heading"><div><h1 id="greeting">Workspace</h1><div class="muted">Your sales workspace at a glance.</div></div><span class="demo" id="mode-pill">WORKSPACE</span></div>
+    <div class="heading"><div><h1 id="greeting">Workspace</h1><div class="muted">Every instrument on the flight deck reads the workspace.</div></div><span class="demo" id="mode-pill">WORKSPACE</span></div>
     <p class="error" id="provider-status" hidden></p>
     <div class="banner" id="start-banner">
       <div><b>Start with a target profile.</b><div class="muted">Save search criteria, run it, then score the new leads in GrokBot. A person still has to mark anyone Qualified.</div></div>
       <button class="btn" type="button" data-jump="search">Create a search</button>
     </div>
-    <div class="stats">
-      <div class="card"><div class="label">Total leads</div><div class="num" id="m-total">0</div><div class="label">From the database</div></div>
-      <div class="card"><div class="label">Qualified leads</div><div class="num" id="m-qualified">0</div><div class="label">After human review</div></div>
-      <div class="card"><div class="label">Pipeline value</div><div class="num" id="m-value">₹0</div><div class="label">New, contacted, and qualified</div></div>
-      <div class="card"><div class="label">Conversion rate</div><div class="num" id="m-rate">0%</div><div class="label" id="m-follow">Won / all leads</div></div>
-    </div>
-    <div class="grid2">
-      <div class="card"><h2>Recent leads</h2><div class="tablewrap"><table><thead><tr><th>Contact</th><th>Company</th><th>Region</th><th>Score</th><th>Status</th></tr></thead><tbody id="recent-leads"></tbody></table></div></div>
-      <div class="card"><h2>Admin summary</h2><div class="list" id="admin-summary"></div></div>
+    <div id="cockpit" class="cockpit" aria-label="Flight deck">
+      <p class="cockpit-fault">Instruments standing by</p>
     </div>
   </section>
 
@@ -138,6 +118,22 @@
   <section id="social" class="page">
     <div class="heading"><div><h1>Social</h1><div class="muted">Who is talking about vendor-friendly US IT hiring. Copy a reply and post it yourself.</div></div></div>
     <div class="note" id="social-safety">LeadPilot never posts, likes, or signs in to X, LinkedIn, Facebook, Reddit, or job boards. Drafts stay on this page until you copy them.</div>
+    <p class="muted" id="social-counts"></p>
+    <div class="social-sections" id="social-feed"></div>
+    <div class="social-filter-bar">
+      <button class="btn secondary social-filters-toggle" type="button" id="social-filters-toggle" aria-expanded="false" aria-controls="social-filters">Filters</button>
+      <form class="card" id="social-filters">
+        <div class="split3">
+          <div class="field"><label for="social-filter-platform">Platform</label><select id="social-filter-platform"><option value="">All</option><option value="x">X</option><option value="linkedin">LinkedIn</option><option value="facebook">Facebook</option><option value="reddit">Reddit</option><option value="job_board">Job board</option><option value="other">Other</option></select></div>
+          <div class="field"><label for="social-filter-topic">Topic</label><input id="social-filter-topic" placeholder="C2C, H1B, a role"></div>
+          <div class="field"><label for="social-filter-company">Company</label><input id="social-filter-company" placeholder="Company mentioned"></div>
+          <div class="field"><label for="social-filter-from">From</label><input id="social-filter-from" type="date"></div>
+          <div class="field"><label for="social-filter-to">To</label><input id="social-filter-to" type="date"></div>
+          <div class="field"><label for="social-filter-status">Status</label><select id="social-filter-status"><option value="open">Open</option><option value="done">Done</option><option value="ignored">Ignored</option><option value="all">All</option></select></div>
+        </div>
+        <button class="btn secondary" type="submit">Apply filters</button>
+      </form>
+    </div>
     <div class="card" id="social-add" data-manage="social">
       <h2>Add a public link</h2>
       <div class="split3">
@@ -157,24 +153,27 @@
       </div>
       <p class="muted" id="social-fetch-note"></p>
     </div>
-    <form class="card" id="social-filters">
-      <div class="split3">
-        <div class="field"><label for="social-filter-platform">Platform</label><select id="social-filter-platform"><option value="">All</option><option value="x">X</option><option value="linkedin">LinkedIn</option><option value="facebook">Facebook</option><option value="reddit">Reddit</option><option value="job_board">Job board</option><option value="other">Other</option></select></div>
-        <div class="field"><label for="social-filter-topic">Topic</label><input id="social-filter-topic" placeholder="C2C, H1B, a role"></div>
-        <div class="field"><label for="social-filter-company">Company</label><input id="social-filter-company" placeholder="Company mentioned"></div>
-        <div class="field"><label for="social-filter-from">From</label><input id="social-filter-from" type="date"></div>
-        <div class="field"><label for="social-filter-to">To</label><input id="social-filter-to" type="date"></div>
-        <div class="field"><label for="social-filter-status">Status</label><select id="social-filter-status"><option value="open">Open</option><option value="done">Done</option><option value="ignored">Ignored</option><option value="all">All</option></select></div>
-      </div>
-      <button class="btn secondary" type="submit">Apply filters</button>
-    </form>
-    <p class="muted" id="social-counts"></p>
-    <div class="social-sections" id="social-feed"></div>
   </section>
 
   <section id="pulse" class="page">
     <div class="heading"><div><h1>Industry Pulse</h1><div class="muted">What is happening in US IT staffing. Urgent cards come first.</div></div></div>
     <div class="note">Industry Pulse only reads public news and discussions. It never posts or signs in to a source.</div>
+    <p class="muted" id="pulse-counts"></p>
+    <div class="pulse-grid" id="pulse-feed"></div>
+    <div class="social-filter-bar">
+      <button class="btn secondary social-filters-toggle" type="button" id="pulse-filters-toggle" aria-expanded="false" aria-controls="pulse-filters">Filters</button>
+      <form class="card" id="pulse-filters">
+        <div class="split3">
+          <div class="field"><label for="pulse-filter-urgency">Urgency</label><select id="pulse-filter-urgency"><option value="">All</option><option value="urgent">Urgent</option><option value="week">This week</option><option value="fyi">FYI</option></select></div>
+          <div class="field"><label for="pulse-filter-source">Source</label><select id="pulse-filter-source"><option value="">All</option><option value="news">Web news</option><option value="forum">Forum</option><option value="social">Social discussion</option></select></div>
+          <div class="field"><label for="pulse-filter-topic">Topic</label><input id="pulse-filter-topic" placeholder="H-1B, C2C, rates"></div>
+          <div class="field"><label for="pulse-filter-from">From</label><input id="pulse-filter-from" type="date"></div>
+          <div class="field"><label for="pulse-filter-to">To</label><input id="pulse-filter-to" type="date"></div>
+          <div class="field"><label for="pulse-filter-status">Status</label><select id="pulse-filter-status"><option value="open">Unread</option><option value="read">Read</option><option value="dismissed">Dismissed</option><option value="all">All</option></select></div>
+        </div>
+        <button class="btn secondary" type="submit">Apply filters</button>
+      </form>
+    </div>
     <div class="card" data-manage="pulse">
       <h2>Add a story</h2>
       <div class="split3">
@@ -193,19 +192,6 @@
       </div>
       <p class="muted" id="pulse-fetch-note"></p>
     </div>
-    <form class="card" id="pulse-filters">
-      <div class="split3">
-        <div class="field"><label for="pulse-filter-urgency">Urgency</label><select id="pulse-filter-urgency"><option value="">All</option><option value="urgent">Urgent</option><option value="week">This week</option><option value="fyi">FYI</option></select></div>
-        <div class="field"><label for="pulse-filter-source">Source</label><select id="pulse-filter-source"><option value="">All</option><option value="news">Web news</option><option value="forum">Forum</option><option value="social">Social discussion</option></select></div>
-        <div class="field"><label for="pulse-filter-topic">Topic</label><input id="pulse-filter-topic" placeholder="H-1B, C2C, rates"></div>
-        <div class="field"><label for="pulse-filter-from">From</label><input id="pulse-filter-from" type="date"></div>
-        <div class="field"><label for="pulse-filter-to">To</label><input id="pulse-filter-to" type="date"></div>
-        <div class="field"><label for="pulse-filter-status">Status</label><select id="pulse-filter-status"><option value="open">Unread</option><option value="read">Read</option><option value="dismissed">Dismissed</option><option value="all">All</option></select></div>
-      </div>
-      <button class="btn secondary" type="submit">Apply filters</button>
-    </form>
-    <p class="muted" id="pulse-counts"></p>
-    <div class="pulse-grid" id="pulse-feed"></div>
   </section>
 
   <section id="games" class="page">
@@ -413,6 +399,11 @@
         <div class="list" id="set-info"></div>
       </div>
     </div>
+    <div class="card" style="margin-top:14px" id="mascot-workspace">
+      <h2>Workspace mascot</h2>
+      <p class="muted">People who have not picked a character start with this one. Anyone can change their own from the Mascot button.</p>
+      <div id="mascot-default-slot"></div>
+    </div>
     <div class="card" style="margin-top:14px" id="preset-admin">
       <h2>Search presets</h2>
       <p class="muted">Admins can add, edit, or delete the chips shown on Search criteria.</p>
@@ -420,19 +411,77 @@
     </div>
   </section>
   <div class="foot">CanberraAI LeadPilot · LinkTMS · TMS-LEAD</div>
+  <section id="help" class="page">
+    <div class="heading"><div><h1>Help</h1><div class="muted">A short guide to the workspace.</div></div></div>
+    <div class="card">
+      <h2>How to move around</h2>
+      <p>Home is the flight deck. Leads, Social, and Pulse stay in the nav. Search, Games, Team, Settings, the mascot, and admin tools are under More.</p>
+      <p>LeadPilot never posts to a social network. Copy a reply, then open the post yourself.</p>
+      <p>A lead becomes Qualified only when a person marks it. Agents draft. They do not send.</p>
+    </div>
+  </section>
 </main>
+</div>
+</div>
+<nav class="bottom-nav" aria-label="Primary">
+  <button class="tab nav-item active" data-tab="overview" type="button" aria-label="Home">Home</button>
+  <button class="tab nav-item" data-tab="leads" type="button">Leads</button>
+  <button class="tab nav-item" data-tab="social" type="button">Social</button>
+  <button class="tab nav-item" data-tab="pulse" type="button" aria-label="Pulse, discussions and industry news">Pulse</button>
+  <button class="nav-more" id="nav-more-mobile" type="button" aria-expanded="false" aria-controls="more-sheet" aria-haspopup="menu">More</button>
+</nav>
+<div id="more-sheet" class="more-sheet" hidden role="menu" aria-label="More">
+  <button class="tab" data-tab="search" type="button" role="menuitem">Search</button>
+  <button class="tab" data-tab="pipeline" type="button" role="menuitem">Pipeline</button>
+  <button class="tab" data-tab="followups" type="button" role="menuitem">Follow-ups</button>
+  <button class="tab" data-tab="reports" type="button" role="menuitem">Reports</button>
+  <button class="tab" data-tab="team" type="button" role="menuitem">Team</button>
+  <button class="tab" data-tab="games" type="button" role="menuitem">♟ Games</button>
+  <button class="tab" data-tab="grokbot" type="button" role="menuitem">GrokBot</button>
+  <button class="tab" data-tab="bots" type="button" role="menuitem">Bots <span id="bots-badge" class="badge" hidden>0</span></button>
+  <button class="tab" data-tab="users" type="button" role="menuitem">Users <span id="pending-badge" class="badge" hidden>0</span></button>
+  <button class="tab" data-tab="apis" type="button" role="menuitem">API keys</button>
+  <button class="tab" data-tab="ai" type="button" role="menuitem">AI / LLM</button>
+  <button class="tab" data-tab="geo" type="button" role="menuitem">Geo target</button>
+  <button class="tab" data-tab="activity" type="button" role="menuitem">Activity</button>
+  <button class="tab" data-tab="updates" type="button" role="menuitem">Comments</button>
+  <button class="tab" data-tab="settings" type="button" role="menuitem">Settings</button>
+  <button class="tab" data-tab="help" type="button" role="menuitem">Help</button>
+  <button id="mascot-settings-open" type="button" role="menuitem">Mascot settings</button>
+  <button id="signout" type="button" role="menuitem">Log out</button>
+</div>
 <div class="toast" id="toast" hidden></div>
+<script src="/static/cockpit/widgets.js"></script>
+<script src="/static/cockpit/annunciator.js"></script>
+<script src="/static/cockpit/leads.js"></script>
+<script src="/static/cockpit/attitude.js"></script>
+<script src="/static/cockpit/conversion.js"></script>
+<script src="/static/cockpit/contact.js"></script>
+<script src="/static/cockpit/pipeline.js"></script>
+<script src="/static/cockpit/uncontacted.js"></script>
+<script src="/static/cockpit/followups.js"></script>
+<script src="/static/cockpit/social.js"></script>
+<script src="/static/cockpit/pulse.js"></script>
+<script src="/static/cockpit/bot.js"></script>
+<script src="/static/cockpit/health.js"></script>
+<script src="/static/cockpit/team.js"></script>
+<script src="/static/cockpit/cockpit.js"></script>
 <script src="/static/select.js"></script>
 <script src="/static/controls.js"></script>
 <script src="/static/dialog.js"></script>
+<script src="/static/nav.js"></script>
 <script src="/static/app.js"></script>
 <script src="/static/search-ui.js"></script>
 <script src="/static/pipeline-ui.js"></script>
 <script src="/static/lead-summary.js"></script>
 <script src="/static/lead-preview.js"></script>
+<script src="/static/js/deeplink.js"></script>
 <script src="/static/social-ui.js"></script>
 <script src="/static/pulse-ui.js"></script>
+<script src="/static/mascot-ramayana.js"></script>
+<script src="/static/mascot-mahabharata.js"></script>
 <script src="/static/mascot-characters.js"></script>
+<script src="/static/mascot-settings.js"></script>
 <script src="/static/mascot-idle.js"></script>
 <script src="/static/mascot-insights.js"></script>
 <script src="/static/mascot.js"></script>

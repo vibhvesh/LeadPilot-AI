@@ -109,13 +109,14 @@
       </g>`);
   }
 
-  const CHARACTERS = [
-    {id: "hanuman", name: "Hanuman", pose: "bounce", blurb: "Orange monkey with a crown and mace", svg: hanumanSvg},
-    {id: "mango", name: "Mango", pose: "wink", blurb: "Parrot who repeats the awkward number", svg: mangoSvg},
-    {id: "noodle", name: "Noodle", pose: "scratch", blurb: "Otter with a clipboard", svg: noodleSvg},
-    {id: "pickle", name: "Pickle", pose: "wink", blurb: "Fox in a tiny tie", svg: pickleSvg},
-    {id: "biscuit", name: "Biscuit", pose: "bounce", blurb: "Penguin who files the cold leads", svg: biscuitSvg},
+  const CLASSIC = [
+    {id: "hanuman", name: "Hanuman", group: "classic", pose: "bounce", blurb: "Orange monkey with a crown and mace", svg: hanumanSvg},
+    {id: "mango", name: "Mango", group: "classic", pose: "wink", blurb: "Parrot who repeats the awkward number", svg: mangoSvg},
+    {id: "noodle", name: "Noodle", group: "classic", pose: "scratch", blurb: "Otter with a clipboard", svg: noodleSvg},
+    {id: "pickle", name: "Pickle", group: "classic", pose: "wink", blurb: "Fox in a tiny tie", svg: pickleSvg},
+    {id: "biscuit", name: "Biscuit", group: "classic", pose: "bounce", blurb: "Penguin who files the cold leads", svg: biscuitSvg},
   ];
+  const CHARACTERS = CLASSIC.concat(root.MascotCast || []);
 
   /* Fully voiced lines for the pages people actually live on. */
   const VOICED = {
@@ -255,6 +256,8 @@
     "apis-ok": ["Every provider key on this page is set. Unsettling, in a good way."],
     "ai-ready": ["A model is routed. Scoring and drafts have somewhere to go."],
     "overview-quiet": ["Overview is calm. {count} lead{s} in the workspace. I checked twice so I could look busy."],
+    "cockpit-alert": ["Cockpit warning: {label}. The red light is the one I would read first."],
+    "cockpit-caution": ["Cockpit caution: {label}. Amber means look before the next pass."],
     "search-missing": ["No search provider is configured. The presets are dressed up with nowhere to go."],
     "search-empty": ["No saved search yet. The chips are glittering for nobody."],
     "search-ready": ["{count} saved search{s} on file. I would run one, but I do not have thumbs."],
@@ -281,11 +284,30 @@
   };
 
   function spice(id, line) {
+    const character = byId(id);
+    if (character && character.voice) return character.voice(line);
     if (id === "mango") return /^squawk/i.test(line) ? line : "SQUAWK. " + line;
     if (id === "noodle") return /clipboard/i.test(line) ? line : "Clipboard note: " + line;
     if (id === "pickle") return /tiny tie/i.test(line) ? line : line + " The tiny tie agrees.";
     if (id === "biscuit") return /^(Formal|Noted)/.test(line) ? line : "Formal note: " + line;
     return line;
+  }
+
+  function applyTone(line, tone) {
+    const text = String(line || "");
+    if (tone === "polite") {
+      return text
+        .replace(/^SQUAWK\.\s*/i, "")
+        .replace(/^Hmph\.\s*/i, "")
+        .replace(/^Boo, kindly\.\s*/i, "")
+        .replace(/\s*The tiny tie agrees\./, "")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+    }
+    if (tone === "savage" && !/Here's the summary!/.test(text)) {
+      return /\.$/.test(text) ? text.replace(/\.$/, ". Kindly, do not leave it there.") : text + " Kindly, do not leave it there.";
+    }
+    return text;
   }
 
   function fill(template, facts) {
@@ -300,12 +322,16 @@
   }
 
   function linesFor(characterId, kind) {
-    const id = byId(characterId) ? characterId : "hanuman";
+    const character = byId(characterId) || byId("hanuman");
+    const id = character.id;
+    if (character.lines && character.lines[kind] && character.lines[kind].length) return character.lines[kind];
     const voiced = VOICED[kind];
     if (voiced && voiced[id] && voiced[id].length) return voiced[id];
     const shared = SHARED[kind];
     if (shared && shared.length) return shared.map(function (line) { return spice(id, line); });
-    return VOICED.generic[id];
+    if (VOICED.generic && VOICED.generic[id] && VOICED.generic[id].length) return VOICED.generic[id];
+    const fallback = (VOICED.generic && VOICED.generic.hanuman) || ["I looked around."];
+    return fallback.map(function (line) { return spice(id, line); });
   }
 
   function byId(id) {
@@ -325,16 +351,28 @@
     const lines = linesFor(characterId, kind);
     const roll = typeof random === "function" ? Number(random()) : Math.random();
     const index = Math.abs(Math.floor(roll * lines.length)) % lines.length;
-    return fill(lines[index], insight && insight.facts);
+    return applyTone(fill(lines[index], insight && insight.facts), insight && insight.tone);
   }
 
   function describe(id) {
     const character = byId(id) || CHARACTERS[0];
-    return {id: character.id, name: character.name, pose: character.pose, blurb: character.blurb, svg: character.svg()};
+    return {
+      id: character.id,
+      name: character.name,
+      pose: character.pose,
+      blurb: character.blurb,
+      group: character.group || "classic",
+      svg: character.svg(),
+    };
   }
 
   const api = {
     STORAGE_KEY: STORAGE_KEY,
+    GROUPS: [
+      {id: "classic", label: "Classic"},
+      {id: "ramayana", label: "Ramayana"},
+      {id: "mahabharata", label: "Mahabharata"},
+    ],
     list: function () { return CHARACTERS.map(function (character) { return describe(character.id); }); },
     byId: function (id) { const character = byId(id); return character ? describe(character.id) : null; },
     next: function (id) { return describe(next(id).id); },

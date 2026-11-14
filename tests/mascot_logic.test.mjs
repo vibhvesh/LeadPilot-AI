@@ -180,6 +180,35 @@ assert.equal(insights.choose({
   overview: {total: 4, followupsOpen: 3, recent: []},
 }).kind, "overview-followups");
 assert.equal(insights.choose({
+  page: "overview",
+  overview: {
+    total: 4,
+    followupsOpen: 3,
+    warnings: [{level: "alert", label: "Overdue follow-ups", count: 2, selector: "#lamp-overdue"}],
+  },
+}).kind, "cockpit-alert");
+assert.match(quip("hanuman", insights.choose({
+  page: "overview",
+  overview: {warnings: [{level: "alert", label: "Overdue follow-ups", count: 2, selector: "#lamp-overdue"}]},
+})), /Cockpit warning/);
+assert.equal(insights.choose({
+  page: "overview",
+  overview: {
+    total: 4,
+    followupsOpen: 3,
+    warnings: [{level: "warn", label: "No LLM key", count: 0, selector: "#lamp-llm"}],
+  },
+}).kind, "overview-followups");
+assert.equal(insights.choose({
+  page: "overview",
+  overview: {
+    total: 4,
+    followupsOpen: 0,
+    recent: [],
+    warnings: [{level: "warn", label: "No search key", count: 0, selector: "#lamp-search"}],
+  },
+}).kind, "cockpit-caution");
+assert.equal(insights.choose({
   page: "leads",
   previewOpen: true,
   leads: [{id: 1, score: 9, status: "New", company: "Ignored"}],

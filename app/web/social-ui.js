@@ -51,28 +51,44 @@
     const auth = item.work_auth ? `<span class="summary-chip">${esc(item.work_auth)}</span>` : "";
     const company = item.company ? `<div class="muted">Company mentioned: ${esc(item.company)}</div>` : "";
     const topic = item.topic ? `<div class="muted">Topic: ${esc(item.topic)}</div>` : "";
-    const link = href ? `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">Open on ${esc(item.platform_label || "the web")}</a>` : "";
+    const label = "Open on " + (item.platform_label || "the web");
+    const link = href ? (window.DeepLink ? window.DeepLink.anchor(href, label) : `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${esc(label)}</a>`) : "";
+    const snippet = item.snippet || "Open the post for the original text.";
+    const more = snippet.length > 160 ? `<button class="flash-more" type="button" data-more="social-snip-${item.id}">More</button>` : "";
     const reply = item.suggested_reply
-      ? `<div class="draft" id="social-reply-${item.id}">${esc(item.suggested_reply)}</div><button class="btn small secondary" type="button" data-copy="social-reply-${item.id}">Copy reply</button>`
+      ? `<div class="draft" id="social-reply-${item.id}">${esc(item.suggested_reply)}</div>`
       : `<p class="muted">No reply suggested.</p>`;
+    const replyButton = item.suggested_reply && href
+      ? `<button class="btn" type="button" data-copy-open="social-reply-${item.id}" data-open-url="${esc(href)}">Reply</button>`
+      : (item.suggested_reply ? `<button class="btn" type="button" data-copy="social-reply-${item.id}">Copy</button>` : "");
     const comments = (item.comments || []).map((comment) => `<div class="muted">${esc(comment.author_name || "Teammate")}: ${esc(comment.body)}</div>`).join("");
-    const manage = can("social", true) ? `<div class="row" style="margin-top:8px">
-        ${item.status === "open" ? `<button class="btn small" type="button" data-social-status="done" data-id="${item.id}">Mark done</button><button class="btn small secondary" type="button" data-social-status="ignored" data-id="${item.id}">Ignore</button>` : `<button class="btn small secondary" type="button" data-social-status="open" data-id="${item.id}">Reopen</button>`}
-        <input id="social-note-${item.id}" placeholder="Note for the team" aria-label="Note for the team">
-        <button class="btn small secondary" type="button" data-comment="${item.id}">Add note</button>
-      </div>` : "";
+    const menuId = "social-more-" + item.id;
+    const menu = [];
+    if (item.suggested_reply) menu.push(`<button type="button" role="menuitem" data-copy="social-reply-${item.id}">Copy reply</button>`);
+    if (can("social", true) && item.status === "open") {
+      menu.push(`<button type="button" role="menuitem" data-social-status="done" data-id="${item.id}">Done</button>`);
+      menu.push(`<button type="button" role="menuitem" data-social-status="ignored" data-id="${item.id}">Ignore</button>`);
+    } else if (can("social", true)) {
+      menu.push(`<button type="button" role="menuitem" data-social-status="open" data-id="${item.id}">Reopen</button>`);
+    }
+    if (can("social", true)) {
+      menu.push(`<input id="social-note-${item.id}" placeholder="Note for the team" aria-label="Note for the team">`);
+      menu.push(`<button type="button" role="menuitem" data-comment="${item.id}">Add note</button>`);
+    }
+    const overflow = menu.length ? `<div class="overflow"><button class="btn secondary" type="button" data-overflow aria-expanded="false" aria-controls="${menuId}" aria-label="More actions">⋯</button><div class="overflow-menu" id="${menuId}" role="menu" hidden>${menu.join("")}</div></div>` : "";
     const status = item.status !== "open" ? pillStatus(item.status) : "";
     const extra = related ? `<div class="muted">${related} related in other sections</div>` : "";
-    return `<article class="social-card">
-      <div class="row">${status}${auth}</div>
-      <div class="muted">${esc(meta)}</div>
+    return `<article class="flash-card social-card social-tone-${esc(item.bucket || "fyi")}">
+      <div class="flash-kicker">${status}${auth}<span class="flash-chip">${esc(item.platform_label || "Web")}</span></div>
+      <h2 class="flash-title">${esc(item.poster_name || item.topic || item.company || "Public post")}</h2>
+      <p class="flash-meta">${esc(meta)}</p>
       ${company}${topic}${extra}
-      <p>${esc(item.snippet || "Open the post for the original text.")}</p>
+      <p class="flash-summary" id="social-snip-${item.id}">${esc(snippet)}</p>
+      ${more}
       <p><b>Why it matters.</b> ${esc(item.why_it_matters || "")}</p>
-      ${link}
       ${reply}
       ${comments}
-      ${manage}
+      <div class="flash-actions">${link}${replyButton}${overflow}</div>
     </article>`;
   }
 
@@ -166,13 +182,21 @@
   async function copyReply(elementId) {
     const node = $(elementId);
     const text = node ? node.textContent : "";
-    if (!text) return;
+    if (!text) return false;
     try {
       await navigator.clipboard.writeText(text);
       toast("Reply copied");
+      return true;
     } catch (error) {
       toast("Select the draft and copy it");
+      return false;
     }
+  }
+
+  async function copyAndOpen(elementId, url) {
+    await copyReply(elementId);
+    if (window.DeepLink) window.DeepLink.open(url);
+    else if (url) window.open(url, "_blank", "noopener");
   }
 
   function run(work) {
@@ -188,6 +212,18 @@
       if (!button || !root.contains(button)) return;
       if (button.id === "social-save") run(save);
       else if (button.id === "social-fetch") run(pull);
+      else if (button.id === "social-filters-toggle") {
+        const form = $("social-filters");
+        const open = form.classList.toggle("is-open");
+        button.setAttribute("aria-expanded", open ? "true" : "false");
+      }
+      else if (button.dataset.more) {
+        const summary = $(button.dataset.more);
+        if (!summary) return;
+        const open = summary.classList.toggle("is-open");
+        button.textContent = open ? "Less" : "More";
+      }
+      else if (button.dataset.copyOpen) run(() => copyAndOpen(button.dataset.copyOpen, button.dataset.openUrl));
       else if (button.dataset.copy) run(() => copyReply(button.dataset.copy));
       else if (button.dataset.socialStatus) run(() => mark(button.dataset.id, button.dataset.socialStatus));
       else if (button.dataset.comment) run(() => comment(button.dataset.comment));
