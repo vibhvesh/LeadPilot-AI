@@ -27,9 +27,21 @@ CHARACTERS = (
     "draupadi",
     "bhishma",
     "shakuni",
-    "ghatotkacha",
     "rocket-boss",
 )
+ROSTER = (
+    "hanuman",
+    "rama",
+    "lakshmana",
+    "sita",
+    "jambavan",
+    "krishna",
+    "arjuna",
+    "bhima",
+    "narad",
+    "rocket-boss",
+)
+CHARACTERS = ROSTER
 DEFAULT_CHARACTER = "hanuman"
 TONES = ("polite", "cheeky", "savage")
 SIZES = ("small", "medium", "large")
@@ -37,6 +49,11 @@ SIDES = ("left", "right")
 IDLE_MIN = 1500
 IDLE_MAX = 10000
 IDLE_DEFAULT = 2600
+CREW_CAP_DEFAULT = 4
+CREW_CAP_MAX = 10
+CREW_START_DEFAULT = 60000
+CREW_STEP_DEFAULT = 60000
+CHEERS_DEFAULT = 300000
 
 
 def _settings(db: Session) -> WorkspaceSettings | None:
@@ -53,6 +70,16 @@ def workspace_character(db: Session) -> str:
 def workspace_family_friendly(db: Session) -> bool:
     row = _settings(db)
     return bool(getattr(row, "mascot_family_friendly", False))
+
+
+def _clamp(value, default: int, lo: int, hi: int) -> int:
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return default
+    if number < lo or number > hi:
+        return default
+    return number
 
 
 def _raw(user: User) -> dict:
@@ -88,6 +115,10 @@ def resolve(db: Session, user: User) -> dict:
         "family_friendly": family,
         "family_friendly_forced": forced_family,
         "rocket_sound": raw.get("rocket_sound") is True,
+        "crew_cap": _clamp(raw.get("crew_cap"), CREW_CAP_DEFAULT, 1, CREW_CAP_MAX),
+        "crew_start_ms": _clamp(raw.get("crew_start_ms"), CREW_START_DEFAULT, 15000, 600000),
+        "crew_step_ms": _clamp(raw.get("crew_step_ms"), CREW_STEP_DEFAULT, 15000, 600000),
+        "cheers_ms": _clamp(raw.get("cheers_ms"), CHEERS_DEFAULT, 60000, 900000),
         "workspace_default": default,
         "explicit": bool(raw),
         "can_set_default": has_permission(db, user, "settings", manage=True),
@@ -132,6 +163,20 @@ def save(db: Session, user: User, body: dict) -> dict:
         current["family_friendly"] = bool(body.get("family_friendly"))
     if "rocket_sound" in body:
         current["rocket_sound"] = bool(body.get("rocket_sound"))
+    for key, default, lo, hi, label in (
+        ("crew_cap", CREW_CAP_DEFAULT, 1, CREW_CAP_MAX, "Crew size must be from 1 to 10"),
+        ("crew_start_ms", CREW_START_DEFAULT, 15000, 600000, "First visit must be between 15 seconds and 10 minutes"),
+        ("crew_step_ms", CREW_STEP_DEFAULT, 15000, 600000, "The next visit must be between 15 seconds and 10 minutes"),
+        ("cheers_ms", CHEERS_DEFAULT, 60000, 900000, "The cheers round must be between 1 and 15 minutes"),
+    ):
+        if key in body and body.get(key) is not None:
+            try:
+                number = int(body.get(key))
+            except (TypeError, ValueError) as exc:
+                raise AppError(label) from exc
+            if number < lo or number > hi:
+                raise AppError(label)
+            current[key] = number
     user.preferences = current
     db.commit()
     db.refresh(user)

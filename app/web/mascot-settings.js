@@ -1,7 +1,7 @@
 /* Preferences for the corner cast. The account is the source of truth; this browser remembers a copy. */
 (function (root) {
   const STORAGE_KEY = "leadpilot-mascot-prefs";
-  const DEFAULTS = {character: "hanuman", enabled: true, idle_ms: 2600, tone: "cheeky", size: "medium", side: "right", family_friendly: false, rocket_sound: false};
+  const DEFAULTS = {character: "hanuman", enabled: true, idle_ms: 2600, tone: "cheeky", size: "medium", side: "right", family_friendly: false, rocket_sound: false, crew_cap: 4, crew_start_ms: 60000, crew_step_ms: 60000, cheers_ms: 300000};
   let panel = null;
   let current = Object.assign({}, DEFAULTS);
   let workspaceDefault = "hanuman";
@@ -68,6 +68,10 @@
     panel.querySelector("[data-pref='size']").value = current.size || "medium";
     panel.querySelector("[data-pref='side']").value = current.side || "right";
     panel.querySelector("[data-idle]").value = String(current.idle_ms || 2600);
+    panel.querySelector("[data-pref='crew_cap']").value = String(current.crew_cap || 4);
+    ["crew_start_ms", "crew_step_ms", "cheers_ms"].forEach(function (name) {
+      panel.querySelector("[data-seconds='" + name + "']").value = String(Math.round((Number(current[name]) || 0) / 1000));
+    });
     panel.querySelector("[data-idle-label]").textContent = seconds.toFixed(1) + " seconds";
     const note = panel.querySelector("[data-default-note]");
     note.textContent = canSetDefault
@@ -93,6 +97,10 @@
         ${field("tone", "Joke level", [["polite", "Polite"], ["cheeky", "Cheeky"], ["savage", "Savage, still kind"]], "cheeky")}
         ${field("size", "Size", [["small", "Small"], ["medium", "Medium"], ["large", "Large"]], "medium")}
         ${field("side", "Resting side", [["right", "Right"], ["left", "Left"]], "right")}
+        <label>Crew on screen (max 10)<input type="number" min="1" max="10" data-pref="crew_cap"></label>
+        <label>First arrival (seconds)<input type="number" min="15" max="600" data-seconds="crew_start_ms"></label>
+        <label>Next arrival (seconds)<input type="number" min="15" max="600" data-seconds="crew_step_ms"></label>
+        <label>Rocket Boss round (seconds)<input type="number" min="60" max="900" data-seconds="cheers_ms"></label>
       </div>
       <p class="mascot-note" data-default-note></p>
       <div class="mascot-row" data-admin hidden>
@@ -127,6 +135,16 @@
     });
     panel.querySelector("[data-idle]").addEventListener("change", function (event) {
       save({idle_ms: Number(event.target.value)});
+    });
+    panel.querySelector("[data-pref='crew_cap']").addEventListener("change", function (event) {
+      save({crew_cap: Number(event.target.value)});
+    });
+    ["crew_start_ms", "crew_step_ms", "cheers_ms"].forEach(function (name) {
+      panel.querySelector("[data-seconds='" + name + "']").addEventListener("change", function (event) {
+        const patch = {};
+        patch[name] = Number(event.target.value) * 1000;
+        save(patch);
+      });
     });
     ["tone", "size", "side"].forEach(function (name) {
       panel.querySelector("[data-pref='" + name + "']").addEventListener("change", function (event) {

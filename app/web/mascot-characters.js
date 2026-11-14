@@ -116,7 +116,11 @@
     {id: "pickle", name: "Pickle", group: "classic", pose: "wink", blurb: "Fox in a tiny tie", svg: pickleSvg},
     {id: "biscuit", name: "Biscuit", group: "classic", pose: "bounce", blurb: "Penguin who files the cold leads", svg: biscuitSvg},
   ];
-  const CHARACTERS = CLASSIC.concat(root.MascotCast || []);
+  const ROSTER = ["hanuman", "rama", "lakshmana", "sita", "jambavan", "krishna", "arjuna", "bhima", "narad", "rocket-boss"];
+  const ALL = CLASSIC.concat(root.MascotCast || []);
+  const CHARACTERS = ALL.filter(function (character) {
+    return ROSTER.indexOf(character.id) !== -1;
+  }).sort(function (a, b) { return ROSTER.indexOf(a.id) - ROSTER.indexOf(b.id); });
 
   /* Fully voiced lines for the pages people actually live on. */
   const VOICED = {
@@ -334,16 +338,21 @@
     return fallback.map(function (line) { return spice(id, line); });
   }
 
-  function byId(id) {
-    for (let i = 0; i < CHARACTERS.length; i += 1) {
-      if (CHARACTERS[i].id === id) return CHARACTERS[i];
+  function find(list, id) {
+    for (let i = 0; i < list.length; i += 1) {
+      if (list[i].id === id) return list[i];
     }
     return null;
   }
 
+  function byId(id) {
+    return find(CHARACTERS, id) || find(ALL, id);
+  }
+
   function next(id) {
     const index = CHARACTERS.findIndex(function (character) { return character.id === id; });
-    return CHARACTERS[(index + 1 + CHARACTERS.length) % CHARACTERS.length];
+    if (index < 0) return CHARACTERS[0];
+    return CHARACTERS[(index + 1) % CHARACTERS.length];
   }
 
   function quip(characterId, insight, random) {
@@ -363,7 +372,7 @@
       blurb: character.blurb,
       group: character.group || "classic",
       idleMs: character.idleMs || 0,
-      svg: character.svg(),
+      svg: root.MascotBodies && root.MascotBodies[character.id] ? root.MascotBodies[character.id]() : character.svg(),
     };
   }
 

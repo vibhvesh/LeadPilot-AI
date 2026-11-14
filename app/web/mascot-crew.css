@@ -1,0 +1,49 @@
+/* Idle crew. They stay along the lower edge and walk off when you move. */
+.crew-member {
+  position: fixed;
+  z-index: 35;
+  width: 72px;
+  pointer-events: none;
+  transition: left .6s ease, top .6s ease, opacity .3s linear;
+}
+.crew-figure svg { width: 72px; height: 96px; display: block; }
+.crew-bubble {
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  max-width: 140px;
+  margin: 0 0 4px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #e5eaf2;
+  color: #172033;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: left;
+  pointer-events: none;
+}
+.crew-member.is-walking .mascot-leg-left,
+.crew-member.is-walking .mascot-leg-right {
+  transform-box: fill-box;
+  transform-origin: center top;
+  animation: mascot-step .32s ease-in-out infinite;
+}
+.crew-member.is-walking .mascot-leg-right { animation-direction: reverse; }
+.crew-happy .crew-mouth { stroke: #167344; }
+.crew-surprised .crew-mouth { stroke: #1d4ed8; }
+.crew-angry .crew-mouth { stroke: #b42318; }
+.crew-laughing .crew-torso { transform: translateY(-2px); }
+.crew-sleepy { opacity: .75; }
+.crew-member.is-leaving { opacity: 0; }
+@media (max-width: 800px) {
+  .crew-member { width: 56px; }
+  .crew-figure svg { width: 56px; height: 76px; }
+  .crew-bubble { max-width: 110px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .crew-member, .crew-member.is-walking .mascot-leg-left, .crew-member.is-walking .mascot-leg-right {
+    transition: none;
+    animation: none;
+  }
+}
