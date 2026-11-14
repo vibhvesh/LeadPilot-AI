@@ -5,6 +5,7 @@ from app.models.audit import AuditEvent
 from app.models.bot import BotConnection, BotMessage, BotToken, DeepSearchRequest
 from app.models.identity import RolePermission, SessionToken, User, UserPermission
 from app.models.leads import LEAD_STATUSES, Comment, FollowUp, Lead
+from app.models.outreach import LeadEvent, OutreachMessage, OutreachTemplate
 from app.models.perf import AppErrorEvent, AppErrorGroup, PerfSample
 from app.models.social import SOCIAL_BUCKETS, SOCIAL_STATUSES, SocialComment, SocialItem
 from app.models.providers import LLMConfig, ProviderAccess, ProviderKey, ProviderUsage

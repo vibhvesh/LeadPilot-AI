@@ -206,7 +206,7 @@ async function loadLeads() {
   const query = params.toString();
   state.leads = await api("/api/leads" + (query ? "?" + query : ""));
   $("lead-rows").innerHTML = state.leads.length ? state.leads.map((lead) =>
-    `<tr class="clicky" data-preview-lead="${lead.id}" data-score="${lead.score ?? ""}" data-status="${esc(lead.status || "")}" data-company="${esc(lead.company || "")}"><td>${esc(lead.company)}</td><td>${esc(lead.contact_name || "—")}<div class="muted">${esc(lead.email || "")}</div></td><td>${esc(lead.source)}</td><td>${esc(lead.region || "—")}</td><td>${lead.score ?? "—"}</td><td>${pill(lead.status)}</td></tr>`
+    `<tr class="clicky" data-preview-lead="${lead.id}" data-score="${lead.score ?? ""}" data-status="${esc(lead.status || "")}" data-company="${esc(lead.company || "")}"><td>${esc(lead.company)}</td><td>${esc(lead.contact_name || "—")}<div class="muted">${esc(lead.email || "")}</div></td><td>${esc(lead.source)}</td><td>${esc(lead.region || "—")}</td><td>${lead.score ?? "—"}</td><td>${pill(lead.status)}${lead.contacted_badge ? `<div class="muted">${esc(lead.contacted_badge)}</div>` : ""}</td></tr>`
   ).join("") : `<tr><td colspan="6">No leads match. Run a search or add one.</td></tr>`;
   if (state.selectedLead) openLead(state.selectedLead, {preview: !!state.previewOnLoad});
   state.previewOnLoad = false;
@@ -237,7 +237,8 @@ async function openLead(id, opts = {}) {
       <button class="btn secondary small" type="button" id="detail-save">Save notes</button>` : ""}
       <button class="btn secondary small" type="button" id="detail-agent">Score in GrokBot</button>
     </div>
-    <div class="list" id="detail-comments" style="margin-top:12px"></div>`;
+    <div class="list" id="detail-comments" style="margin-top:12px"></div>
+    ${window.LeadOutreach ? LeadOutreach.panel(lead) : ""}`;
   api("/api/comments?lead_id=" + id).then((rows) => {
     const host = $("detail-comments");
     if (!host) return;
@@ -265,6 +266,7 @@ async function openLead(id, opts = {}) {
     };
   }
   if (opts.preview && window.LeadPreview) LeadPreview.show(lead);
+  if (window.LeadOutreach) LeadOutreach.mount(lead).catch((error) => toast(error.message));
 }
 
 $("toggle-lead-form").addEventListener("click", () => { $("lead-form").hidden = !$("lead-form").hidden; });
@@ -304,6 +306,7 @@ async function loadFollowups() {
     await api("/api/followups/" + button.dataset.done, {method: "PATCH", body: {status: "done"}});
     loadFollowups();
   }));
+  if (window.LeadOutreach) LeadOutreach.due().catch(() => {});
 }
 $("fu-save").addEventListener("click", async () => {
   try {
@@ -657,6 +660,7 @@ async function loadSettings() {
     ["Workspace", data.workspace_name], ["Product", data.product_name], ["Authentication", data.authentication],
     ["Database", data.database], ["Demo mode", data.demo_mode ? "On" : "Off"], ["Super Admin", data.super_admin],
   ].map(([label, value]) => `<div class="item"><b>${esc(label)}</b>${esc(value)}</div>`).join("");
+  if (window.LeadOutreach) LeadOutreach.settings().catch(() => {});
 }
 $("set-save").addEventListener("click", async () => {
   const icp = window.SearchForm ? SearchForm.icpPayload() : {};

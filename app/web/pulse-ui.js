@@ -51,7 +51,7 @@
     const why = item.why_it_matters || "";
     const more = why.length > 160 ? `<button class="flash-more" type="button" data-more="pulse-why-${item.id}">More</button>` : "";
     const tone = item.urgency === "urgent" ? "urgent" : item.urgency === "week" ? "week" : "fyi";
-    const notes = (item.comments || []).map((comment) => `<div class="muted">${esc(comment.author_name || "Teammate")}: ${esc(comment.body)}</div>`).join("");
+    const notes = (item.comments || []).map((comment) => `<div class="muted">${esc(comment.author_name || "Teammate")} · ${esc((comment.created_at || "").slice(0, 16).replace("T", " "))}: ${esc(comment.body)}</div>`).join("");
     const status = item.status !== "open" ? `<span class="status pending">${esc(item.status)}</span>` : "";
     const menuId = "pulse-more-" + item.id;
     const menu = [];

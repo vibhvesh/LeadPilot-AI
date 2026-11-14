@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, UniqueConstraint
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -27,6 +27,9 @@ class User(Base):
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     approved_by: Mapped[str | None] = mapped_column(String(320), nullable=True)
     preferences: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    on_leave: Mapped[bool] = mapped_column(Boolean, default=False)
+    cover_user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    gmail_refresh_token: Mapped[str] = mapped_column(Text, default="")
 
 
 class SessionToken(Base):

@@ -84,7 +84,13 @@ def list_leads(db: Session, status: str | None = None, query: str | None = None)
         )
     leads = db.scalars(statement).all()
     owners = _owners(db, leads)
-    return [lead_dict(lead, owners) for lead in leads]
+    rows = [lead_dict(lead, owners) for lead in leads]
+    from app.outreach.service import latest_labels
+
+    labels = latest_labels(db, [row["id"] for row in rows])
+    for row in rows:
+        row["contacted_badge"] = labels.get(row["id"], "")
+    return rows
 
 
 def get_lead_or_404(db: Session, lead_id: int) -> Lead:
@@ -103,6 +109,11 @@ def create_lead(db: Session, actor: User, payload: dict) -> dict:
     existing = db.scalar(select(Lead).where(Lead.dedup_key == key))
     if existing is not None:
         raise AppError("A lead for this company already exists", 409)
+    email = (payload.get("email") or "").strip().lower()
+    if email:
+        by_email = db.scalar(select(Lead).where(Lead.email.ilike(email)))
+        if by_email is not None:
+            raise AppError(f"A lead for {email} already exists ({by_email.company})", 409)
     status = canonical_status(payload.get("status") or "New")
     if status == "Qualified":
         raise AppError("Qualified status requires human review")
