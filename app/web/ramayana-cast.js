@@ -301,7 +301,7 @@
     </svg>`;
   }
 
-  const STORY_V = "sprites";
+  const STORY_V = "f4d32b8";
   const SPRITES = {
     rama: "rama.png", lakshmana: "lakshmana.png", sita: "sita.png", hanuman: "hanuman.png",
     jambavan: "jambavan.png", sugriva: "sugriva.png", vibhishana: "vibhishana.png",
