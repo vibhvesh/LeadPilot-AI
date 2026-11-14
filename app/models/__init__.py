@@ -11,6 +11,7 @@ from app.models.social import SOCIAL_BUCKETS, SOCIAL_STATUSES, SocialComment, So
 from app.models.providers import LLMConfig, ProviderAccess, ProviderKey, ProviderUsage
 from app.models.pulse import PULSE_SOURCES, PULSE_STATUSES, PULSE_URGENCIES, PulseComment, PulseItem
 from app.models.search import AiSearchRun, SearchCriteria, SearchPreset, SearchRun
+from app.models.story import StoryMessage
 from app.models.workspace import WorkspaceSettings
 
 __all__ = [
@@ -45,6 +46,7 @@ __all__ = [
     "SearchRun",
     "SocialComment",
     "SocialItem",
+    "StoryMessage",
     "SessionToken",
     "User",
     "UserPermission",

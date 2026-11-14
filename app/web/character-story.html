@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Characters · LeadPilot</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/ramayana-story.css">
+</head>
+<body data-story-always="1">
+  <main class="story-page">
+    <p><a href="/">Back to the desk</a></p>
+    <h1>Characters</h1>
+    <p>The whole Ramayana stays on this page. After two minutes of idle it plays on a copy of this page. Any mouse, key, scroll, or touch clears that copy. The real page is not changed.</p>
+    <p><button id="story-play" type="button">Play now</button></p>
+    <label class="story-switch"><input id="story-enabled" type="checkbox"> Global overlay on other pages</label>
+    <p class="story-note">That switch defaults to off. Other pages do not load this story. The live mascot crew is unchanged.</p>
+    <section class="story-samples" aria-label="Sample desk">
+      <article class="story-card"><h2>Ayodhya desk</h2><p>Morning leads, still on the table.</p><button type="button">Open</button></article>
+      <article class="story-card"><h2>Lanka board</h2><p>Three follow-ups before sunset.</p></article>
+      <article class="story-card"><h2>Setu stones</h2><p>Each one says Ram.</p><img alt="" src="/static/favicon.svg" width="48" height="48"></article>
+      <p data-sensitive>Private note stays blurred in the copy.</p>
+    </section>
+    <h2>Lines</h2>
+    <p>Edit a caption or a speech bubble. Reset puts the original line back.</p>
+    <div id="story-lines"></div>
+  </main>
+  <script src="/static/ramayana-cast.js" data-story="ramayana-cast.js"></script>
+  <script src="/static/ramayana-scenes.js" data-story="ramayana-scenes.js"></script>
+  <script src="/static/ramayana-story.js" data-story="ramayana-story.js"></script>
+  <script src="/static/story-overlay.js" data-story="story-overlay.js"></script>
+  <script src="/static/ramayana-editor.js" data-story="ramayana-editor.js"></script>
+  <script src="/static/story-boot.js" data-story="story-boot.js"></script>
+</body>
+</html>

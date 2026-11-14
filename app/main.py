@@ -32,6 +32,7 @@ from app.providers.router import router as providers_router
 from app.search.router import router as search_router
 from app.settings.router import router as settings_router
 from app.social.bot_router import router as social_bot_router
+from app.story.router import router as story_router
 from app.social.router import router as social_router
 from app.pulse.bot_router import router as pulse_bot_router
 from app.pulse.router import router as pulse_router
@@ -121,6 +122,7 @@ def create_app() -> FastAPI:
     app.include_router(social_bot_router)
     app.include_router(pulse_router)
     app.include_router(pulse_bot_router)
+    app.include_router(story_router)
 
     @app.get("/health")
     def health():
@@ -162,6 +164,22 @@ def create_app() -> FastAPI:
         if not _is_admin(request):
             return JSONResponse({"detail": "Admin only"}, status_code=403)
         return _workspace(request)
+
+    @app.get("/admin/character-story")
+    def character_story_page(request: Request):
+        if not _approved(request):
+            return RedirectResponse("/login", status_code=302)
+        if not _is_admin(request):
+            return JSONResponse({"detail": "Admin only"}, status_code=403)
+        return FileResponse(WEB / "character-story.html")
+
+    @app.get("/admin/idle-characters")
+    def idle_characters_alias(request: Request):
+        if not _approved(request):
+            return RedirectResponse("/login", status_code=302)
+        if not _is_admin(request):
+            return JSONResponse({"detail": "Admin only"}, status_code=403)
+        return RedirectResponse("/admin/character-story", status_code=302)
 
     @app.get("/login")
     def login_page(request: Request):
