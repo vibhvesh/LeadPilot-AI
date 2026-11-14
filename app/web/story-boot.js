@@ -1,7 +1,7 @@
 /* Arms the story overlay after two minutes of idle. The mascot crew keeps its own timer. */
 (function (root) {
   const IDLE_MS = 120000;
-  const STORY_V = "f4d32b8";
+  const STORY_V = "cut5";
   const FILES = ["ramayana-cast.js", "ramayana-scenes.js", "ramayana-story.js", "story-overlay.js"];
   let generation = 0;
   let timer = 0;

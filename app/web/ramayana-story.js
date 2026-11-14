@@ -27,24 +27,54 @@
     return node;
   }
 
-  function actorNode(actor, line, index, reduced) {
-    const node = document.createElement("div");
-    node.className = "story-actor story-from-" + (actor.entry || "left") + " story-do-" + (actor.action || "walk");
-    node.style.left = actor.entry === "right" ? "108%" : actor.entry === "top" ? "42%" : "-18%";
-    node.style.bottom = actor.entry === "top" ? "110%" : "8%";
-    node.setAttribute("aria-label", root.RamayanaCast.name(actor.id));
-    node.innerHTML = root.RamayanaCast.svg(actor.id);
-    if (line) node.appendChild(bubble(line));
-    const left = (6 + (index % 6) * 14) + "%";
-    if (reduced) {
-      node.style.left = left;
-      node.style.bottom = "8%";
-    } else {
-      requestAnimationFrame(function () {
-        node.style.left = left;
-        node.style.bottom = "8%";
-      });
+  const WEAPON = {
+    rama: "bow", lakshmana: "bow", hanuman: "gada", sugriva: "club", kumbhakarna: "club",
+    ravana: "sword", jambavan: "staff", narad: "veena", sita: "lotus",
+  };
+
+  function spread(count) {
+    const spots = [];
+    const slots = Math.max(count, 1);
+    for (let i = 0; i < slots; i += 1) spots.push(0.08 + ((i + 0.5) / slots) * 0.84);
+    for (let i = spots.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const swap = spots[i];
+      spots[i] = spots[j];
+      spots[j] = swap;
     }
+    return spots;
+  }
+
+  function actorNode(actor, line, spot, reduced, later) {
+    const node = document.createElement("div");
+    const fromLeft = Math.random() < 0.5;
+    node.className = "story-actor story-do-" + (actor.action || "walk") + (fromLeft ? "" : " story-face-left");
+    node.setAttribute("aria-label", root.RamayanaCast.name(actor.id));
+    const kind = WEAPON[actor.id] ? '<span class="story-weapon story-weapon-' + WEAPON[actor.id] + '" aria-hidden="true"></span>' : "";
+    const figure = document.createElement("div");
+    figure.className = "story-figure";
+    figure.innerHTML = root.RamayanaCast.svg(actor.id) + kind;
+    node.appendChild(figure);
+    if (line) node.appendChild(bubble(line));
+    const land = 4 + Math.random() * 12;
+    node.style.left = (fromLeft ? -24 : 108) + "%";
+    node.style.bottom = land + "%";
+    if (reduced) {
+      node.style.left = (spot * 100) + "%";
+      return node;
+    }
+    const delay = Math.floor(Math.random() * 1400);
+    const travel = 1500 + Math.floor(Math.random() * 1700);
+    later(function () {
+      node.style.transition = "left " + travel + "ms ease, bottom " + travel + "ms ease";
+      node.style.left = (spot * 100) + "%";
+      node.style.bottom = land + "%";
+      later(function () {
+        const drift = Math.max(0.06, Math.min(0.9, spot + (Math.random() - 0.5) * 0.08));
+        node.style.transition = "left 2400ms ease";
+        node.style.left = (drift * 100) + "%";
+      }, travel + 500);
+    }, delay);
     return node;
   }
 
@@ -70,7 +100,7 @@
   function bonk(stage, x) {
     const star = document.createElement("span");
     star.className = "story-bonk";
-    star.textContent = "✦";
+    star.textContent = "BONK";
     star.style.left = x;
     const dust = document.createElement("span");
     dust.className = "story-dust";
@@ -89,6 +119,9 @@
     if (index < 0 || index >= scenes.length) index = 0;
     let alive = true;
     const waits = [];
+    let spots = [];
+    let spotAt = 0;
+    let bubblesLeft = 1;
     const stage = document.createElement("div");
     stage.className = "story-stage" + (reduced ? " story-still" : "");
     host.appendChild(stage);
@@ -96,6 +129,18 @@
     function later(fn, ms) {
       const id = window.setTimeout(function () { if (alive) fn(); }, ms);
       waits.push(id);
+    }
+
+    function takeLine(line) {
+      if (!line || bubblesLeft <= 0) return "";
+      bubblesLeft -= 1;
+      return line;
+    }
+
+    function place(actor, line) {
+      const spot = spots[spotAt] == null ? 0.2 + Math.random() * 0.6 : spots[spotAt];
+      spotAt += 1;
+      return actorNode(actor, takeLine(line), spot, reduced, later);
     }
 
     function show(next) {
@@ -106,19 +151,23 @@
       stage.classList.remove("story-in-blessing");
       stage.dataset.scene = scene.id;
       stage.dataset.backdrop = scene.backdrop;
+      const population = scene.actors.length + scene.extras.length + (scene.gag ? 2 : 0) + (scene.blessing ? 1 : 0);
+      spots = spread(population);
+      spotAt = 0;
+      bubblesLeft = 1;
       const caption = document.createElement("p");
       caption.className = "story-caption";
       caption.textContent = textFor(scene, "narad", opts.lines);
       stage.appendChild(caption);
-      scene.extras.forEach(function (id, extraIndex) {
-        const extra = actorNode({ id: id, entry: extraIndex % 2 ? "right" : "left", action: "cheer" }, "", extraIndex + 3, reduced);
+      scene.extras.forEach(function (id) {
+        const extra = place({ id: id, action: "cheer" }, "");
         extra.classList.add("story-extra-actor");
         stage.appendChild(extra);
       });
       scene.actors.forEach(function (actor, actorIndex) {
-        const node = actorNode(actor, textFor(scene, actor.id, opts.lines), actorIndex, reduced);
+        const node = place(actor, textFor(scene, actor.id, opts.lines));
         stage.appendChild(node);
-        if (!reduced && (actor.action === "shoot" || actor.action === "fight")) shoot(stage, (12 + actorIndex * 14) + "%");
+        if (!reduced && (actor.action === "shoot" || actor.action === "fight")) shoot(stage, (18 + actorIndex * 8) + "%");
       });
       if (opts.overlay && opts.overlay.interact) opts.overlay.interact(scene.play);
       if (scene.gag) gag(scene);
@@ -127,15 +176,11 @@
     }
 
     function gag(scene) {
-      const elder = actorNode({ id: "old-man-boss", entry: "left", action: "walk" }, textFor(scene, "old-man-boss", opts.lines), 4, reduced);
-      const boss = actorNode({ id: "rocket-boss", entry: "top", action: "fly" }, textFor(scene, "rocket-boss", opts.lines), 5, reduced);
+      const elder = place({ id: "old-man-boss", action: "walk" }, textFor(scene, "old-man-boss", opts.lines));
+      const boss = place({ id: "rocket-boss", action: "fly" }, textFor(scene, "rocket-boss", opts.lines));
       elder.classList.add("story-boss");
       boss.classList.add("story-boss");
       stage.append(elder, boss);
-      const chase = document.createElement("p");
-      chase.className = "story-chase";
-      chase.textContent = textFor(scene, "chase", opts.lines);
-      stage.appendChild(chase);
       if (reduced) return;
       later(function () {
         if (stage.classList.contains("story-in-blessing")) return;
@@ -150,7 +195,7 @@
     }
 
     function bless(scene) {
-      const sage = actorNode({ id: "valmiki", entry: "left", action: "walk" }, textFor(scene, "valmiki", opts.lines), 1, reduced);
+      const sage = place({ id: "valmiki", action: "walk" }, textFor(scene, "valmiki", opts.lines));
       sage.classList.add("story-sage");
       const glow = document.createElement("div");
       glow.className = "story-glow";
