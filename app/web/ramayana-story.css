@@ -20,16 +20,17 @@
 .story-cut { position: fixed; height: 2px; background: #f2c14e; transform: rotate(-8deg); }
 .story-perch { outline: 3px solid #f2c14e; }
 
-.story-actor { position: absolute; width: 92px; transition: left 1.2s linear, bottom 1.2s linear; }
-.story-extra-actor { width: 64px; opacity: 0.9; }
-.story-boss { width: 110px; z-index: 3; }
-.story-caption, .story-bubble, .story-chase { background: #fff8e8; color: #1c2430; border-radius: 12px; padding: 6px 8px; font-size: 13px; }
-.story-caption { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); max-width: min(520px, 90vw); }
-.story-bubble { position: absolute; left: 0; bottom: 100%; width: 140px; margin: 0; }
+.story-actor { position: absolute; height: 90px; width: auto; }
+.story-figure { height: 100%; transform-origin: center bottom; animation: story-lean 1.8s ease-in-out infinite; }
+.story-extra-actor { height: 72px; opacity: 0.95; }
+.story-boss { height: 96px; z-index: 3; }
+.story-caption, .story-bubble, .story-chase { background: #fff8e8; color: #1c2430; border-radius: 12px; padding: 4px 6px; font-size: 11px; }
+.story-caption { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); max-width: min(420px, 86vw); z-index: 6; }
+.story-bubble { position: absolute; left: 50%; bottom: calc(100% + 2px); transform: translateX(-50%); width: max-content; max-width: 108px; margin: 0; z-index: 6; }
 .story-chase { position: absolute; right: 12px; bottom: 18%; }
 .story-arrow { position: absolute; bottom: 36%; font-size: 18px; filter: drop-shadow(-8px 0 0 rgba(242, 193, 78, 0.85)); }
 .story-hit::after { content: " ✦"; }
-.story-bonk { position: absolute; bottom: 46%; font-size: 28px; color: #f2c14e; }
+.story-bonk { position: absolute; bottom: 42%; font-size: 14px; font-weight: 700; color: #8a5a12; background: #fff8e8; border-radius: 8px; padding: 2px 6px; }
 .story-dust { position: absolute; bottom: 18%; width: 36px; height: 12px; border-radius: 50%; background: rgba(90, 70, 40, 0.35); }
 .story-dazed { transform: rotate(-8deg); }
 
@@ -53,17 +54,24 @@
 @keyframes story-tail { 50% { transform: rotate(20deg); } }
 @keyframes story-flame { 50% { transform: scaleY(1.35); } }
 .story-chase-run { transition-duration: 0.4s; }
-.story-sprite { width: 100%; height: auto; display: block; transform-origin: center bottom; animation: story-bob 0.5s ease-in-out infinite; }
-.story-from-right .story-sprite { animation-name: story-bob-flip; }
-.story-hanuman-sprite { transform-origin: 28% 42%; animation-name: story-wag; }
-.story-from-right .story-hanuman-sprite { animation-name: story-wag-flip; }
-.story-pranam .story-sprite, .story-still .story-sprite { animation: none; }
-.story-chase-run .story-sprite { animation-duration: 0.22s; }
-@keyframes story-bob { 50% { transform: translateY(-5px); } }
-@keyframes story-bob-flip { 0%, 100% { transform: scaleX(-1); } 50% { transform: translateY(-5px) scaleX(-1); } }
-@keyframes story-wag { 50% { transform: translateY(-4px) skewX(8deg); } }
-@keyframes story-wag-flip { 0%, 100% { transform: scaleX(-1); } 50% { transform: translateY(-4px) skewX(-8deg) scaleX(-1); } }
-.story-sage { z-index: 4; width: 108px; }
+.story-sprite { height: 100%; width: auto; display: block; transform-origin: center bottom; animation: story-bob 0.9s ease-in-out infinite; }
+.story-face-left .story-sprite { animation-name: story-bob-flip; }
+.story-hanuman-sprite { transform-origin: 30% 40%; animation-name: story-wag; }
+.story-face-left .story-hanuman-sprite { animation-name: story-wag-flip; }
+.story-pranam .story-sprite, .story-pranam .story-figure, .story-pranam .story-weapon, .story-still .story-sprite, .story-still .story-figure { animation: none; }
+@keyframes story-bob { 50% { transform: translateY(-2px); } }
+@keyframes story-bob-flip { 0%, 100% { transform: scaleX(-1); } 50% { transform: translateY(-2px) scaleX(-1); } }
+@keyframes story-wag { 50% { transform: translateY(-2px) skewX(3deg); } }
+@keyframes story-wag-flip { 0%, 100% { transform: scaleX(-1); } 50% { transform: translateY(-2px) skewX(-3deg) scaleX(-1); } }
+@keyframes story-lean { 50% { transform: rotate(1.5deg); } }
+@keyframes story-swing { 50% { transform: rotate(8deg); } }
+.story-weapon { position: absolute; right: -4px; top: 34%; width: 16px; height: 16px; transform-origin: 20% 80%; animation: story-swing 1.6s ease-in-out infinite; }
+.story-weapon-bow { border: 2px solid #8a5a2a; border-left: 0; border-radius: 0 10px 10px 0; }
+.story-weapon-gada, .story-weapon-club, .story-weapon-staff { border-radius: 8px; background: #c9962e; }
+.story-weapon-sword { background: #d9dde3; width: 4px; height: 18px; }
+.story-weapon-veena { border-bottom: 3px solid #8a5a2a; border-radius: 8px; }
+.story-weapon-lotus { background: #f4a7c5; border-radius: 50%; }
+.story-sage { z-index: 4; height: 96px; }
 .story-pranam { transform: translateY(12px) rotate(14deg); transform-origin: bottom center; }
 .story-pranam .story-leg-l, .story-pranam .story-leg-r, .story-pranam .story-arm-l, .story-pranam .story-arm-r, .story-pranam .story-tail, .story-pranam .story-flame, .story-pranam .old-finger { animation-play-state: paused; }
 .story-namaste { position: absolute; left: 28px; bottom: 46px; width: 22px; height: 26px; }
@@ -80,5 +88,7 @@
 }
 @media (max-width: 640px) {
   .story-line { grid-template-columns: 1fr; }
-  .story-actor { width: 72px; }
+  .story-actor, .story-boss, .story-sage { height: 70px; }
+  .story-extra-actor { height: 56px; }
+  .story-bubble, .story-caption { font-size: 10px; }
 }

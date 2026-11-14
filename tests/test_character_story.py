@@ -1,5 +1,6 @@
 """Admin Ramayana story page, editable lines, and the overlay switch."""
 
+import struct
 import subprocess
 from pathlib import Path
 
@@ -61,7 +62,12 @@ def test_story_page_is_admin_only_and_stays_off_the_rest_of_the_app(client):
     assert "getDisplayMedia" not in (ROOT / "app/web/story-overlay.js").read_text()
     sprites = list((ROOT / "app/web/story").glob("*.png"))
     assert len(sprites) == 20
-    assert all(sprite.stat().st_size < 80 * 1024 for sprite in sprites)
+    for sprite in sprites:
+        assert sprite.stat().st_size < 80 * 1024
+        raw = sprite.read_bytes()
+        assert raw[12:16] == b"IHDR"
+        width, height = struct.unpack(">II", raw[16:24])
+        assert 0.15 < width / height < 0.75, sprite.name
 
 
 def test_lines_save_reset_and_overlay_defaults_off(client):
