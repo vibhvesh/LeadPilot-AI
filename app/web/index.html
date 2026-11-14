@@ -8,6 +8,15 @@
   <link rel="stylesheet" href="/static/theme.css">
   <link rel="stylesheet" href="/static/select.css">
   <link rel="stylesheet" href="/static/mascot.css">
+  <style>
+    #games.page.active{display:flex;flex-direction:column;min-height:calc(100vh - 180px);min-height:calc(100dvh - 180px)}
+    .games-frame{width:100%;flex:1 1 auto;height:calc(100vh - 230px);height:calc(100dvh - 230px);min-height:60vh;min-height:60dvh;border:1px solid #e5eaf2;border-radius:11px;background:#fff}
+    a.games-open{display:inline-block;text-decoration:none;text-align:center}
+    @media(max-width:800px){
+      .games-frame{height:calc(100vh - 200px);height:calc(100dvh - 200px);min-height:70vh;min-height:70dvh}
+      a.games-open{min-height:44px;line-height:22px}
+    }
+  </style>
 </head>
 <body>
 <header class="top">
@@ -25,6 +34,7 @@
     <button class="tab" data-tab="followups" type="button">◷ Follow-ups</button>
     <button class="tab" data-tab="team" type="button">♧ Team</button>
     <button class="tab" data-tab="reports" type="button">▤ Reports</button>
+    <button class="tab" data-tab="games" type="button">♟ Games</button>
     <button class="tab" data-tab="grokbot" type="button">✦ GrokBot</button>
     <button class="tab" data-tab="bots" type="button">💬 Bots <span id="bots-badge" class="badge" hidden>0</span></button>
   </nav>
@@ -118,6 +128,13 @@
     <div class="heading"><div><h1>Reports</h1><div class="muted">This month’s lead generation, from stored leads and searches.</div></div></div>
     <div class="stats" id="report-stats"></div>
     <div class="card"><h2>Leads by country</h2><div id="report-countries"></div></div>
+  </section>
+
+  <section id="games" class="page">
+    <div class="heading"><div><h1>Games</h1><div class="muted">Chess, in the workspace.</div></div>
+      <a class="btn games-open" href="https://vibhvesh.github.io/chess-live/" target="_blank" rel="noopener noreferrer">Open full screen</a>
+    </div>
+    <iframe class="games-frame" title="Chess" src="https://vibhvesh.github.io/chess-live/" allow="microphone; autoplay; clipboard-write"></iframe>
   </section>
 
   <section id="grokbot" class="page">

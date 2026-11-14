@@ -2,6 +2,7 @@ const TAB_MODULE = {
   overview: "dashboard", leads: "leads", pipeline: "pipeline", followups: "followups",
   team: "team", reports: "reports", grokbot: "grokbot", bots: "dashboard", users: "users", search: "search",
   apis: "apikeys", ai: "ai", geo: "geo", activity: "activity", updates: "comments", settings: "settings",
+  games: "games",
 };
 const ROLE_LABEL = {super_admin: "Super Admin", admin: "Admin", member: "Member"};
 const state = {me: null, leads: [], selectedLead: null, selectedUser: null, modules: [], roles: {}};
@@ -24,6 +25,7 @@ function money(value) {
 }
 function percent(value) { return ((Number(value) || 0) * 100).toFixed(1) + "%"; }
 function can(module, manage = false) {
+  if (module === "games") return !manage;
   const flags = (state.me && state.me.permissions[module]) || {};
   return manage ? !!flags.manage : !!(flags.view || flags.manage);
 }
@@ -124,7 +126,8 @@ async function boot() {
       state.previewOnLoad = true;
     }
     show("leads", {url: "/leads" + location.search});
-  } else if (wanted && document.getElementById(wanted) && can(TAB_MODULE[wanted])) show(wanted);
+  } else if ((location.pathname.replace(/\/+$/, "") || "/") === "/games" && can("games")) show("games", {url: "/games"});
+  else if (wanted && document.getElementById(wanted) && can(TAB_MODULE[wanted])) show(wanted);
   else if (first) show(first.dataset.tab);
 }
 

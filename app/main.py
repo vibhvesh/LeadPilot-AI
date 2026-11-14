@@ -110,16 +110,17 @@ def create_app() -> FastAPI:
 
     @app.get("/")
     def home(request: Request):
-        if not _approved(request):
-            return RedirectResponse("/login", status_code=302)
-        return FileResponse(WEB / "index.html")
+        return _workspace(request)
 
     @app.get("/leads")
     def leads_page(request: Request):
         """Deep link for a lead or a status column. The page reads ?id= and ?status=."""
-        if not _approved(request):
-            return RedirectResponse("/login", status_code=302)
-        return FileResponse(WEB / "index.html")
+        return _workspace(request)
+
+    @app.get("/games")
+    def games_page(request: Request):
+        """Chess tab. Same shell as the rest of the workspace."""
+        return _workspace(request)
 
     @app.get("/login")
     def login_page(request: Request):
@@ -135,6 +136,9 @@ def create_app() -> FastAPI:
     return app
 
 
+_CHESS_ORIGIN = "https://vibhvesh.github.io"
+
+
 def _approved(request: Request) -> bool:
     db = database.SessionLocal()
     try:
@@ -142,6 +146,78 @@ def _approved(request: Request) -> bool:
         return user is not None and user.status == "approved"
     finally:
         db.close()
+
+
+def _workspace(request: Request):
+    if not _approved(request):
+        return RedirectResponse("/login", status_code=302)
+    response = FileResponse(WEB / "index.html")
+    _allow_chess_embed(response)
+    return response
+
+
+def _allow_chess_embed(response: Response) -> None:
+    """Allow the chess iframe, including microphone for push-to-talk."""
+    origin = _CHESS_ORIGIN
+    response.headers["Permissions-Policy"] = _merge_permissions(
+        response.headers.get("permissions-policy", ""),
+        ("microphone", "autoplay", "clipboard-write"),
+        origin,
+    )
+    response.headers["Content-Security-Policy"] = _merge_frame_src(
+        response.headers.get("content-security-policy", ""),
+        origin,
+    )
+
+
+def _merge_permissions(policy: str, features: tuple, origin: str) -> str:
+    items = []
+    seen = set()
+    for chunk in [part.strip() for part in policy.split(",") if part.strip()]:
+        name = chunk.split("=", 1)[0].strip().lower()
+        if name in features:
+            seen.add(name)
+            allowlist = chunk.split("=", 1)[-1]
+            if origin in chunk or "*" in allowlist:
+                items.append(chunk)
+            elif chunk.rstrip().endswith(")"):
+                body = chunk.rstrip()[:-1].rstrip()
+                items.append(f'{body} "{origin}")' if not body.endswith("=") else f'{name}=(self "{origin}")')
+            else:
+                items.append(f'{name}=(self "{origin}")')
+        else:
+            items.append(chunk)
+    for name in features:
+        if name not in seen:
+            items.append(f'{name}=(self "{origin}")')
+    return ", ".join(items)
+
+
+def _merge_frame_src(policy: str, origin: str) -> str:
+    if not policy.strip():
+        return f"frame-src 'self' {origin}"
+    parts = [part.strip() for part in policy.split(";") if part.strip()]
+    frame_tokens = None
+    default_tokens = None
+    kept = []
+    for part in parts:
+        tokens = part.split()
+        name = tokens[0].lower()
+        if name == "frame-src":
+            frame_tokens = tokens[1:]
+            continue
+        if name == "default-src":
+            default_tokens = tokens[1:]
+        kept.append(part)
+    if frame_tokens is None and default_tokens is None:
+        return policy
+    sources = [token for token in (frame_tokens if frame_tokens is not None else default_tokens) if token != "'none'"]
+    if origin not in sources and "*" not in sources:
+        sources.append(origin)
+    if not sources:
+        sources = [origin]
+    kept.append("frame-src " + " ".join(sources))
+    return "; ".join(kept)
 
 
 app = create_app()
