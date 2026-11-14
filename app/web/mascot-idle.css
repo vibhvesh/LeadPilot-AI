@@ -1,0 +1,27 @@
+/* The walk plays only while the mascot is traveling to the pointer or back to the corner. */
+.hanuman.is-walking .mascot-body,
+.hanuman.is-walking .hanuman-body {
+  transform-origin: 40px 78px;
+  animation: mascot-walk .32s ease-in-out infinite;
+}
+.hanuman.is-walking .mascot-leg-left,
+.hanuman.is-walking .mascot-leg-right {
+  transform-box: fill-box;
+  transform-origin: center top;
+  animation: mascot-step .32s ease-in-out infinite;
+}
+.hanuman.is-walking .mascot-leg-right { animation-direction: reverse; }
+@keyframes mascot-walk {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-4px) rotate(3deg); }
+}
+@keyframes mascot-step {
+  0%, 100% { transform: rotate(10deg); }
+  50% { transform: rotate(-10deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hanuman.is-walking .mascot-body,
+  .hanuman.is-walking .hanuman-body,
+  .hanuman.is-walking .mascot-leg-left,
+  .hanuman.is-walking .mascot-leg-right { animation: none; }
+}

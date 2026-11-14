@@ -156,7 +156,7 @@ async function loadOverview() {
   $("m-follow").textContent = data.followups_due + " follow-ups open · won / all leads";
   $("start-banner").hidden = data.total_leads > 0;
   $("recent-leads").innerHTML = data.recent_leads.length ? data.recent_leads.map((lead) =>
-    `<tr class="clicky" data-preview-lead="${lead.id}"><td>${esc(lead.contact_name || "—")}</td><td>${esc(lead.company)}</td><td>${esc(lead.region || "—")}</td><td>${lead.score ?? "—"}</td><td>${pill(lead.status)}</td></tr>`
+    `<tr class="clicky" data-preview-lead="${lead.id}" data-score="${lead.score ?? ""}" data-status="${esc(lead.status || "")}" data-company="${esc(lead.company || "")}"><td>${esc(lead.contact_name || "—")}</td><td>${esc(lead.company)}</td><td>${esc(lead.region || "—")}</td><td>${lead.score ?? "—"}</td><td>${pill(lead.status)}</td></tr>`
   ).join("") : `<tr><td colspan="5">No leads yet.</td></tr>`;
   const admin = data.admin;
   $("admin-summary").innerHTML = admin ? `
@@ -182,7 +182,7 @@ async function loadLeads() {
   const query = params.toString();
   state.leads = await api("/api/leads" + (query ? "?" + query : ""));
   $("lead-rows").innerHTML = state.leads.length ? state.leads.map((lead) =>
-    `<tr class="clicky" data-preview-lead="${lead.id}"><td>${esc(lead.company)}</td><td>${esc(lead.contact_name || "—")}<div class="muted">${esc(lead.email || "")}</div></td><td>${esc(lead.source)}</td><td>${esc(lead.region || "—")}</td><td>${lead.score ?? "—"}</td><td>${pill(lead.status)}</td></tr>`
+    `<tr class="clicky" data-preview-lead="${lead.id}" data-score="${lead.score ?? ""}" data-status="${esc(lead.status || "")}" data-company="${esc(lead.company || "")}"><td>${esc(lead.company)}</td><td>${esc(lead.contact_name || "—")}<div class="muted">${esc(lead.email || "")}</div></td><td>${esc(lead.source)}</td><td>${esc(lead.region || "—")}</td><td>${lead.score ?? "—"}</td><td>${pill(lead.status)}</td></tr>`
   ).join("") : `<tr><td colspan="6">No leads match. Run a search or add one.</td></tr>`;
   if (state.selectedLead) openLead(state.selectedLead, {preview: !!state.previewOnLoad});
   state.previewOnLoad = false;
@@ -274,7 +274,7 @@ async function loadFollowups() {
   fillLeadSelect($("fu-lead"), "Workspace reminder");
   const rows = await api("/api/followups");
   $("fu-list").innerHTML = rows.length ? rows.map((row) => `
-    <div class="item"><b>${esc(row.title)}</b><span class="muted">${esc(row.company || "Workspace")} · ${row.due_at ? esc(new Date(row.due_at).toLocaleString()) : "No due date"} · ${esc(row.status)}</span>
+    <div class="item" data-fu-id="${row.id}" data-fu-status="${esc(row.status || "")}" data-due="${esc(row.due_at || "")}"><b>${esc(row.title)}</b><span class="muted">${esc(row.company || "Workspace")} · ${row.due_at ? esc(new Date(row.due_at).toLocaleString()) : "No due date"} · ${esc(row.status)}</span>
     ${row.status === "open" && can("followups", true) ? `<div><button class="btn small secondary" type="button" data-done="${row.id}">Mark done</button></div>` : ""}</div>`).join("") : `<div class="muted">No follow-ups yet.</div>`;
   $("fu-list").querySelectorAll("[data-done]").forEach((button) => button.addEventListener("click", async () => {
     await api("/api/followups/" + button.dataset.done, {method: "PATCH", body: {status: "done"}});
@@ -304,7 +304,7 @@ async function loadReports() {
     ["Conversion", percent(data.conversion_rate)],
     ["Saved searches", data.active_campaigns],
   ];
-  $("report-stats").innerHTML = cards.map(([label, value]) => `<div class="card"><div class="label">${esc(label)}</div><div class="num">${esc(value)}</div></div>`).join("");
+  $("report-stats").innerHTML = cards.map(([label, value]) => `<div class="card" data-report="${esc(label)}"><div class="label">${esc(label)}</div><div class="num">${esc(value)}</div></div>`).join("");
   $("report-countries").innerHTML = data.by_country.length ? data.by_country.map((row) => `<div class="activity"><div><b>${esc(row.country)}</b></div><span>${row.count}</span></div>`).join("") : `<div class="muted">No countries recorded yet.</div>`;
 }
 
@@ -381,7 +381,7 @@ async function loadUsers() {
   const data = await api("/api/users");
   state.modules = data.modules;
   state.roles = data.roles;
-  $("user-rows").innerHTML = data.users.map((user) => `<tr>
+  $("user-rows").innerHTML = data.users.map((user) => `<tr data-account-status="${esc(user.status || "")}">
     <td><button class="linkish" type="button" data-user="${user.id}">${esc(user.email)}</button><div class="muted">${esc(user.name || "")}</div></td>
     <td>${esc(ROLE_LABEL[user.role] || user.role)}</td>
     <td>${pill(user.status === "approved" ? "Approved" : user.status === "pending" ? "Pending" : "Rejected")}</td>
@@ -525,7 +525,7 @@ $("s-save").addEventListener("click", async () => {
 
 async function loadApis() {
   const data = await api("/api/providers");
-  $("key-rows").innerHTML = data.keys.map((row) => `<tr><td>${esc(row.provider)}</td><td>${row.configured ? esc(row.source) : "Not set"}</td><td>${esc(row.hint || "—")}</td><td>${row.database_copy && can("apikeys", true) ? `<button class="btn small secondary" type="button" data-forget="${esc(row.provider)}">Remove saved key</button>` : ""}</td></tr>`).join("");
+  $("key-rows").innerHTML = data.keys.map((row) => `<tr data-provider="${esc(row.provider)}" data-configured="${row.configured ? "true" : "false"}"><td>${esc(row.provider)}</td><td>${row.configured ? esc(row.source) : "Not set"}</td><td>${esc(row.hint || "—")}</td><td>${row.database_copy && can("apikeys", true) ? `<button class="btn small secondary" type="button" data-forget="${esc(row.provider)}">Remove saved key</button>` : ""}</td></tr>`).join("");
   $("key-rows").querySelectorAll("[data-forget]").forEach((button) => button.addEventListener("click", async () => {
     await api("/api/providers/keys/" + button.dataset.forget, {method: "DELETE"});
     toast("Removed the saved copy");
@@ -594,7 +594,7 @@ $("g-save").addEventListener("click", async () => {
 async function loadActivity() {
   const [summary, events] = await Promise.all([api("/api/activity/summary"), api("/api/activity")]);
   const cards = [["Activities today", summary.activities_today], ["API calls", summary.api_calls], ["Searches", summary.searches], ["Failed", summary.failed_requests]];
-  $("activity-stats").innerHTML = cards.map(([label, value]) => `<div class="card"><div class="label">${label}</div><div class="num">${value}</div></div>`).join("");
+  $("activity-stats").innerHTML = cards.map(([label, value]) => `<div class="card" data-activity="${esc(label)}"><div class="label">${esc(label)}</div><div class="num">${value}</div></div>`).join("");
   $("activity-list").innerHTML = events.map((event) => `<div class="activity"><div><b>${esc(event.email || "System")}</b><div class="label">${esc(event.action)}${event.module ? " · " + esc(event.module) : ""}${event.success ? "" : " · failed"}</div></div><span class="label">${esc(event.created_at ? new Date(event.created_at).toLocaleString() : "")}</span></div>`).join("") || `<div class="muted">No events yet.</div>`;
 }
 
@@ -661,7 +661,7 @@ const talk = {connectionId: null, name: "", approved: false, refreshing: false};
 async function loadBots() {
   const rows = await api("/api/bots");
   talk.rows = rows;
-  $("bot-connections").innerHTML = rows.length ? rows.map((row) => `<div class="item"><b>${esc(row.name)}</b> ${pill(row.status)}
+  $("bot-connections").innerHTML = rows.length ? rows.map((row) => `<div class="item" data-bot-status="${esc(row.status || "")}" data-bot-unread="${Number(row.unread) || 0}"><b>${esc(row.name)}</b> ${pill(row.status)}
     <div class="muted">${esc(row.description || "No description")}${row.user_email ? " · " + esc(row.user_email) : ""}${row.unread ? " · " + row.unread + " unread" : ""}</div>
     <div class="row">
       <button class="btn small secondary" type="button" data-open-bot="${row.id}">Open</button>

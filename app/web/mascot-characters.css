@@ -1,0 +1,42 @@
+/* Poses for the corner cast: bounce, wink, scratch. Walking lives with the idle module. */
+.mascot-svg, .hanuman-svg { width: 72px; height: 80px; display: block; }
+.mascot-tail, .hanuman-tail { transform-origin: 20px 62px; animation: mascot-tail 1.6s ease-in-out infinite; }
+.mascot-eye { transform-box: fill-box; transform-origin: center; }
+.pose-bounce .mascot-body, .pose-bounce .hanuman-body {
+  transform-origin: 40px 78px;
+  animation: hanuman-hop 1.1s ease-in-out infinite;
+}
+.pose-wink .mascot-eye-right { animation: mascot-wink 1.8s ease-in-out infinite; }
+.pose-scratch .mascot-paw {
+  transform-box: fill-box;
+  transform-origin: 80% 80%;
+  animation: mascot-scratch 1.15s ease-in-out infinite;
+}
+@keyframes hanuman-hop {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+@keyframes mascot-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+@keyframes mascot-wink {
+  0%, 42%, 100% { transform: scaleY(1); }
+  50%, 62% { transform: scaleY(0.12); }
+}
+@keyframes mascot-scratch {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-32deg) translateY(-4px); }
+}
+@keyframes mascot-tail {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(8deg); }
+}
+@media (max-width: 800px) {
+  .mascot-svg, .hanuman-svg { width: 56px; height: 62px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mascot-body, .hanuman-body, .mascot-tail, .hanuman-tail, .mascot-paw, .mascot-eye, .mascot-eye-right {
+    animation: none;
+  }
+}
