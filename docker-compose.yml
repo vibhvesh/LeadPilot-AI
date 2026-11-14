@@ -1,41 +1,92 @@
+# LeadPilot: the app, Postgres, and Caddy.
+# Copy .env.example to .env before `docker compose up`. See DOCKER.md.
+# TLS_MODE=http serves plain HTTP. TLS_MODE=https gets a certificate for
+# LEADPILOT_DOMAIN. TLS_MODE=auto uses HTTPS only when that domain is a hostname.
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   app:
     build: .
-    env_file: .env
+    image: leadpilot:local
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-leadpilot}:${DB_PASSWORD}@db:5432/${POSTGRES_DB:-leadpilot}
+      HOME: /tmp
     ports:
-      - "127.0.0.1:1102:1102"
+      - "127.0.0.1:${LEADPILOT_APP_PORT:-1102}:1102"
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:1102/health', timeout=4)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
     restart: unless-stopped
-
-  proxy:
-    image: caddy:2
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    volumes:
-      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - app
-    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging: *default-logging
 
   db:
-    image: postgres:16-alpine
+    image: postgres:16.16-alpine
     environment:
-      POSTGRES_DB: leadpilot
-      POSTGRES_USER: leadpilot
+      POSTGRES_USER: ${POSTGRES_USER:-leadpilot}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-leadpilot}
     volumes:
       - leadpilot_db:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U leadpilot -d leadpilot"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
-      retries: 20
+      timeout: 3s
+      retries: 10
+      start_period: 10s
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging: *default-logging
+
+  proxy:
+    image: caddy:2.11.9-alpine
+    environment:
+      TLS_MODE: ${TLS_MODE:-auto}
+      LEADPILOT_DOMAIN: ${LEADPILOT_DOMAIN:-}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    ports:
+      - "${LEADPILOT_BIND:-0.0.0.0}:${LEADPILOT_HTTP_PORT:-80}:80"
+      - "${LEADPILOT_BIND:-0.0.0.0}:${LEADPILOT_HTTPS_PORT:-443}:443"
+      - "${LEADPILOT_BIND:-0.0.0.0}:${LEADPILOT_HTTPS_PORT:-443}:443/udp"
+    volumes:
+      - ./deploy/proxy:/opt/leadpilot-proxy:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    entrypoint: ["/bin/sh", "/opt/leadpilot-proxy/entrypoint.sh"]
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging: *default-logging
 
 volumes:
   leadpilot_db:

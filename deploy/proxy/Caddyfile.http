@@ -1,0 +1,25 @@
+{
+	admin off
+	auto_https off
+}
+
+:80 {
+	encode zstd gzip
+	request_body {
+		max_size 16MB
+	}
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+	reverse_proxy app:1102 {
+		header_up Host {host}
+		header_up X-Real-IP {remote_host}
+		transport http {
+			response_header_timeout 300s
+			read_timeout 300s
+			write_timeout 300s
+		}
+	}
+}
