@@ -67,6 +67,11 @@ def test_lines_save_reset_and_overlay_defaults_off(client):
     assert turned.json()["enabled"] is True
     assert client.put("/api/admin/story-overlay", json={"enabled": False}).json()["enabled"] is False
 
+    blessing = client.put("/api/admin/story-messages", json={"scene_id": "s01", "actor": "valmiki", "text": "Aashirvad, beta."})
+    assert blessing.status_code == 200
+    assert client.get("/api/story/lines").json()["lines"]["s01:valmiki"] == "Aashirvad, beta."
+    assert client.post("/api/admin/story-messages/reset", json={"scene_id": "s01", "actor": "valmiki"}).status_code == 200
+
     saved = client.put("/api/admin/story-messages", json={"scene_id": "s04", "actor": "old-man-boss", "text": "Plan badlo."})
     assert saved.status_code == 200
     assert client.get("/api/story/lines").json()["lines"]["s04:old-man-boss"] == "Plan badlo."

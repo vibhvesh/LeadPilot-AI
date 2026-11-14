@@ -13,6 +13,7 @@
     narad: "Narad",
     "rocket-boss": "Rocket Boss",
     "old-man-boss": "Old Man Boss",
+    valmiki: "Maharishi Valmiki",
   };
 
   function wrap(body, extra) {
@@ -270,11 +271,42 @@
     </svg>`;
   }
 
+  function valmiki() {
+    return `<svg class="story-svg story-valmiki" viewBox="0 0 110 160" aria-hidden="true">
+      <g class="story-leg story-leg-l"><path d="M40 108 L34 142" stroke="#f7f1df" stroke-width="10" stroke-linecap="round"/></g>
+      <g class="story-leg story-leg-r"><path d="M64 108 L70 142" stroke="#f2c14e" stroke-width="10" stroke-linecap="round"/></g>
+      <path class="valmiki-dhoti" d="M34 96 h40 l8 46 h-56 z" fill="#f7f1df"/>
+      <path class="valmiki-shawl" d="M26 60 Q54 46 86 64 L76 104 Q54 90 32 108 Z" fill="#e07a2f"/>
+      <path class="valmiki-beads" d="M46 72 Q54 90 62 72" fill="none" stroke="#8a3b1a" stroke-width="3"/>
+      <circle cx="50" cy="78" r="1.6" fill="#c4554a"/><circle cx="54" cy="84" r="1.6" fill="#c4554a"/><circle cx="58" cy="78" r="1.6" fill="#c4554a"/>
+      <g class="story-arm story-arm-l">
+        <path d="M34 74 L24 102" stroke="#e8c9a0" stroke-width="6" stroke-linecap="round"/>
+        <path class="valmiki-staff" d="M20 58 L16 150" stroke="#8a5a2a" stroke-width="4" stroke-linecap="round"/>
+      </g>
+      <g class="story-arm story-arm-r valmiki-hand">
+        <path d="M76 72 L92 50" stroke="#e8c9a0" stroke-width="6" stroke-linecap="round"/>
+        <circle cx="96" cy="44" r="5" fill="#e8c9a0"/>
+        <path class="valmiki-palm" d="M66 84 h18 v12 h-18 z" fill="#e6d7a8"/>
+        <path d="M68 88 h14 M68 92 h14" stroke="#6b4423" stroke-width="0.8"/>
+      </g>
+      <circle cx="54" cy="42" r="15" fill="#e8c9a0"/>
+      <path class="valmiki-hair" d="M38 42 Q36 22 54 20 Q74 22 72 42" fill="#f7f4ee"/>
+      <path class="valmiki-topknot" d="M48 24 Q54 6 60 24 Q54 16 48 24" fill="#f4efe4"/>
+      <circle cx="54" cy="14" r="4" fill="#f7f4ee"/>
+      <path class="valmiki-beard" d="M40 50 Q54 92 68 50 Q60 78 54 96 Q48 78 40 50" fill="#f7f4ee"/>
+      <path class="valmiki-tilak" d="M54 34 v7" stroke="#c4554a" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="47" cy="40" r="1.4" fill="#2b2118"/>
+      <circle cx="61" cy="40" r="1.4" fill="#2b2118"/>
+      <path class="valmiki-smile" d="M48 48 Q54 52 60 48" fill="none" stroke="#6b3e32" stroke-width="1.2"/>
+    </svg>`;
+  }
+
   function svg(id) {
     const drawn = {
       rama, lakshmana, sita, hanuman, jambavan, sugriva, vibhishana, ravana, kumbhakarna, narad,
       "rocket-boss": rocketBoss,
       "old-man-boss": oldManBoss,
+      valmiki: valmiki,
     }[id];
     if (drawn) return drawn();
     const teamMatch = /^team-(\d)$/.exec(id || "");

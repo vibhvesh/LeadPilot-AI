@@ -79,6 +79,8 @@
     stage.appendChild(dust);
   }
 
+  const HANDS = '<svg class="story-namaste" viewBox="0 0 24 28" aria-hidden="true"><path d="M12 6 v14 M8 9 v9 M16 9 v9" fill="none" stroke="#e0b08a" stroke-width="2.4" stroke-linecap="round"/></svg>';
+
   function start(host, options) {
     const opts = options || {};
     const scenes = root.RamayanaScenes.list();
@@ -86,16 +88,22 @@
     let index = opts.start == null ? readIndex(scenes.length) : opts.start;
     if (index < 0 || index >= scenes.length) index = 0;
     let alive = true;
-    let timer = 0;
+    const waits = [];
     const stage = document.createElement("div");
     stage.className = "story-stage" + (reduced ? " story-still" : "");
     host.appendChild(stage);
+
+    function later(fn, ms) {
+      const id = window.setTimeout(function () { if (alive) fn(); }, ms);
+      waits.push(id);
+    }
 
     function show(next) {
       index = (next + scenes.length) % scenes.length;
       writeIndex(index);
       const scene = scenes[index];
       stage.innerHTML = "";
+      stage.classList.remove("story-in-blessing");
       stage.dataset.scene = scene.id;
       stage.dataset.backdrop = scene.backdrop;
       const caption = document.createElement("p");
@@ -114,9 +122,8 @@
       });
       if (opts.overlay && opts.overlay.interact) opts.overlay.interact(scene.play);
       if (scene.gag) gag(scene);
-      timer = window.setTimeout(function () {
-        if (alive) show(index + 1);
-      }, scene.duration);
+      if (scene.blessing) bless(scene);
+      later(function () { show(index + 1); }, scene.duration);
     }
 
     function gag(scene) {
@@ -130,16 +137,58 @@
       chase.textContent = textFor(scene, "chase", opts.lines);
       stage.appendChild(chase);
       if (reduced) return;
-      window.setTimeout(function () {
-        if (!alive) return;
-        stage.querySelectorAll(".story-actor:not(.story-boss)").forEach(function (node) {
+      later(function () {
+        if (stage.classList.contains("story-in-blessing")) return;
+        stage.querySelectorAll(".story-actor:not(.story-boss):not(.story-sage)").forEach(function (node) {
           node.classList.add("story-chase-run");
         });
         bonk(stage, "58%");
         bonk(stage, "78%");
         elder.classList.add("story-dazed");
         boss.classList.add("story-dazed");
-      }, 1600);
+      }, scene.blessing ? 3600 : 1600);
+    }
+
+    function bless(scene) {
+      const sage = actorNode({ id: "valmiki", entry: "left", action: "walk" }, textFor(scene, "valmiki", opts.lines), 1, reduced);
+      sage.classList.add("story-sage");
+      const glow = document.createElement("div");
+      glow.className = "story-glow";
+      stage.append(glow, sage);
+      function bow() {
+        stage.classList.add("story-in-blessing");
+        stage.querySelectorAll(".story-actor:not(.story-sage)").forEach(function (node) {
+          node.classList.add("story-pranam");
+          if (!node.querySelector(".story-namaste")) node.insertAdjacentHTML("beforeend", HANDS);
+        });
+        stage.querySelectorAll(".story-boss").forEach(function (node) {
+          node.classList.add("story-sheepish");
+          if (node.querySelector(".story-dropped")) return;
+          const loot = document.createElement("span");
+          loot.className = "story-dropped";
+          const spot = node.getBoundingClientRect();
+          const frame = stage.getBoundingClientRect();
+          loot.style.left = Math.max(8, spot.left - frame.left) + "px";
+          loot.style.bottom = "6%";
+          stage.appendChild(loot);
+        });
+        stage.querySelectorAll(".story-arrow, .story-chase").forEach(function (node) {
+          node.classList.add("story-paused");
+        });
+        sage.classList.add("story-blessing");
+        glow.classList.add("story-glow-on");
+      }
+      function resume() {
+        stage.classList.remove("story-in-blessing");
+        stage.querySelectorAll(".story-pranam").forEach(function (node) { node.classList.remove("story-pranam"); });
+        stage.querySelectorAll(".story-paused").forEach(function (node) { node.classList.remove("story-paused"); });
+      }
+      if (reduced) {
+        bow();
+        return;
+      }
+      later(bow, 800);
+      later(resume, 3200);
     }
 
     show(index);
@@ -147,7 +196,7 @@
       index: function () { return index; },
       stop: function () {
         alive = false;
-        window.clearTimeout(timer);
+        waits.forEach(function (id) { window.clearTimeout(id); });
         writeIndex(index);
         stage.remove();
       },
