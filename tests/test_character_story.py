@@ -56,7 +56,12 @@ def test_story_page_is_admin_only_and_stays_off_the_rest_of_the_app(client):
     assert "60000" in crew
     boot = (ROOT / "app/web/story-boot.js").read_text()
     assert "120000" in boot
+    assert "?v=" in boot
+    assert "?v=" in page.text
     assert "getDisplayMedia" not in (ROOT / "app/web/story-overlay.js").read_text()
+    sprites = list((ROOT / "app/web/story").glob("*.png"))
+    assert len(sprites) == 20
+    assert all(sprite.stat().st_size < 80 * 1024 for sprite in sprites)
 
 
 def test_lines_save_reset_and_overlay_defaults_off(client):

@@ -1,6 +1,7 @@
 /* Arms the story overlay after two minutes of idle. The mascot crew keeps its own timer. */
 (function (root) {
   const IDLE_MS = 120000;
+  const STORY_V = "sprites";
   const FILES = ["ramayana-cast.js", "ramayana-scenes.js", "ramayana-story.js", "story-overlay.js"];
   let generation = 0;
   let timer = 0;
@@ -46,7 +47,7 @@
     if (!document.querySelector("link[data-story-css]")) {
       const link = document.createElement("link");
       link.rel = "stylesheet";
-      link.href = "/static/ramayana-story.css";
+      link.href = "/static/ramayana-story.css?v=" + STORY_V;
       link.dataset.storyCss = "1";
       document.head.appendChild(link);
     }
@@ -55,7 +56,7 @@
       if (document.querySelector('script[data-story="' + file + '"]')) continue;
       await new Promise(function (resolve, reject) {
         const script = document.createElement("script");
-        script.src = "/static/" + file;
+        script.src = "/static/" + file + "?v=" + STORY_V;
         script.dataset.story = file;
         script.onload = resolve;
         script.onerror = reject;
@@ -107,7 +108,7 @@
     arm();
   }
 
-  const api = { IDLE_MS: IDLE_MS, install: install, startNow: begin };
+  const api = { IDLE_MS: IDLE_MS, STORY_V: STORY_V, install: install, startNow: begin };
   root.StoryBoot = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   install();

@@ -47,7 +47,7 @@
   }
 
   const forest = ["team-1", "team-2", "team-3"];
-  const crowd = ["team-1", "team-2", "team-3", "team-4", "team-5", "team-6", "team-7"];
+  const crowd = ["team-1", "team-2", "team-3", "team-4", "team-5", "team-6", "team-7", "team-8"];
 
   const BEATS = [
     beat("s01", "Ayodhya", "palace", "Narayan Narayan. Ayodhya ka darbar chamak raha hai.", "rama~left~walk~Yeh hamara ghar hai.|sita~right~walk~Phoolon jaisi subah.|lakshmana~left~bow~Main peeche hoon."),
