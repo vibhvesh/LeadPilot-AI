@@ -90,7 +90,10 @@ def test_member_saves_preferences_and_sees_the_mascot(client):
     fresh = client.get("/api/me/preferences").json()
     assert fresh["character"] == "krishna"
     assert fresh["workspace_default"] == "rama"
-    assert set(CHARACTERS) >= {"hanuman", "rama", "krishna", "ravana", "ghatotkacha", "rocket-boss"}
+    assert list(CHARACTERS) == ["hanuman", "rama", "lakshmana", "sita", "jambavan", "krishna", "arjuna", "bhima", "narad", "rocket-boss"]
+    removed = client.put("/api/me/preferences", json={"character": "mango"})
+    assert removed.status_code == 400
+    assert client.get("/api/me/preferences").json()["character"] == "krishna"
 
 
 def test_hanuman_is_the_fallback_and_a_saved_character_stays(client):
@@ -112,9 +115,9 @@ def test_hanuman_is_the_fallback_and_a_saved_character_stays(client):
     fallback = client.get("/api/me/preferences").json()
     assert fallback["character"] == "hanuman"
     assert fallback["workspace_default"] == "hanuman"
-    kept = client.put("/api/me/preferences", json={"character": "biscuit"})
+    kept = client.put("/api/me/preferences", json={"character": "krishna"})
     assert kept.status_code == 200
-    assert kept.json()["character"] == "biscuit"
+    assert kept.json()["character"] == "krishna"
     db = SessionLocal()
     try:
         row = db.get(WorkspaceSettings, 1)
@@ -122,7 +125,7 @@ def test_hanuman_is_the_fallback_and_a_saved_character_stays(client):
         db.commit()
     finally:
         db.close()
-    assert client.get("/api/me/preferences").json()["character"] == "biscuit"
+    assert client.get("/api/me/preferences").json()["character"] == "krishna"
     forced = client.put("/api/settings/mascot", json={"family_friendly": True})
     assert forced.status_code == 200
     assert forced.json()["family_friendly"] is True

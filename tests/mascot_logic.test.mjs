@@ -238,7 +238,7 @@ for (const line of kinds) {
   assert.ok(line.length > 8);
 }
 
-assert.deepEqual(characters.list().map((item) => item.id), cast);
+assert.deepEqual(characters.list().map((item) => item.id), ["hanuman"]);
 assert.equal(characters.next("biscuit").id, "hanuman");
 assert.equal(characters.byId("mango").pose, "wink");
 assert.match(characters.byId("hanuman").svg, /hanuman-crown/);

@@ -63,5 +63,24 @@
     },
   };
 
-  root.MascotCast = (root.MascotCast || []).concat([rocketBoss]);
+  const narad = {
+    id: "narad",
+    name: "Narad",
+    group: "ramayana",
+    pose: "bounce",
+    blurb: "Narada Muni with a veena and a topknot",
+    voice: function (line) {
+      const text = String(line || "");
+      if (text.indexOf("Narayan Narayan") === 0) return text;
+      return "Narayan Narayan. " + text;
+    },
+    svg: function () { return "<svg></svg>"; },
+    lines: {
+      "lead-top": ["Narayan Narayan. {company} scored {score}. The veena noticed before the inbox did."],
+      "followup-overdue": ["Narayan Narayan. {count} follow-up{s} overdue. Even a wandering sage keeps a date."],
+      generic: ["Narayan Narayan. The page is trying to tell you something."],
+    },
+  };
+
+  root.MascotCast = (root.MascotCast || []).concat([rocketBoss, narad]);
 })(typeof globalThis !== "undefined" ? globalThis : this);

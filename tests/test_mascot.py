@@ -87,6 +87,6 @@ def test_mascot_choice_and_idle_rules():
     script = ROOT / "tests" / "mascot_logic.test.mjs"
     result = subprocess.run(["node", str(script)], capture_output=True, text=True, check=False)
     assert result.returncode == 0, result.stdout + result.stderr
-    for name in ("deeplink.test.mjs", "mascot_cast.test.mjs", "mascot_anger.test.mjs"):
+    for name in ("deeplink.test.mjs", "mascot_cast.test.mjs", "mascot_anger.test.mjs", "mascot_crew.test.mjs"):
         result = subprocess.run(["node", str(ROOT / "tests" / name)], capture_output=True, text=True, check=False)
         assert result.returncode == 0, result.stdout + result.stderr
