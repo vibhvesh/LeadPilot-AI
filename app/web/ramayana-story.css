@@ -1,0 +1,63 @@
+.story-page { margin: 0 auto; max-width: 920px; padding: 24px 16px 64px; color: #1c2430; font: 16px/1.45 "Iowan Old Style", Palatino, Georgia, serif; background: #f6f1e7; }
+.story-page h1 { font-size: 32px; margin: 0 0 8px; }
+.story-note, .story-switch { display: block; margin: 8px 0; }
+.story-samples { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 16px 0 24px; }
+.story-card { background: #fff; border: 1px solid #e4d8c4; border-radius: 14px; padding: 14px; }
+.story-card button, #story-play { background: #1f4b99; color: #fff; border: 0; border-radius: 8px; padding: 8px 12px; }
+.old-finger { transform-box: fill-box; transform-origin: bottom center; animation: story-wag 0.45s ease-in-out infinite; }
+@keyframes story-wag { 50% { transform: rotate(16deg); } }
+.story-scene { background: #fff; border: 1px solid #e4d8c4; border-radius: 12px; margin: 8px 0; padding: 8px 12px; }
+.story-line { display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px; align-items: start; margin: 8px 0; }
+.story-line textarea { width: 100%; min-height: 48px; }
+.story-line button { background: #1f4b99; color: #fff; border: 0; border-radius: 8px; padding: 6px 10px; }
+.story-save-note { font-size: 13px; color: #2f6b4f; }
+
+.story-overlay { position: fixed; inset: 0; z-index: 80; pointer-events: none; }
+.story-dim { position: absolute; inset: 0; background: rgba(20, 33, 61, 0.35); }
+.story-host, .story-stage { position: absolute; inset: 0; }
+.story-overlay-out { opacity: 0; transition: opacity 160ms linear; }
+.story-clone { overflow: hidden; box-sizing: border-box; background: inherit; }
+.story-cut { position: fixed; height: 2px; background: #f2c14e; transform: rotate(-8deg); }
+.story-perch { outline: 3px solid #f2c14e; }
+
+.story-actor { position: absolute; width: 92px; transition: left 1.2s linear, bottom 1.2s linear; }
+.story-extra-actor { width: 64px; opacity: 0.9; }
+.story-boss { width: 110px; z-index: 3; }
+.story-caption, .story-bubble, .story-chase { background: #fff8e8; color: #1c2430; border-radius: 12px; padding: 6px 8px; font-size: 13px; }
+.story-caption { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); max-width: min(520px, 90vw); }
+.story-bubble { position: absolute; left: 0; bottom: 100%; width: 140px; margin: 0; }
+.story-chase { position: absolute; right: 12px; bottom: 18%; }
+.story-arrow { position: absolute; bottom: 36%; font-size: 18px; filter: drop-shadow(-8px 0 0 rgba(242, 193, 78, 0.85)); }
+.story-hit::after { content: " ✦"; }
+.story-bonk { position: absolute; bottom: 46%; font-size: 28px; color: #f2c14e; }
+.story-dust { position: absolute; bottom: 18%; width: 36px; height: 12px; border-radius: 50%; background: rgba(90, 70, 40, 0.35); }
+.story-dazed { transform: rotate(-8deg); }
+
+.story-stage[data-backdrop="palace"] { background: linear-gradient(#f8e7c1, transparent 40%); }
+.story-stage[data-backdrop="forest"] { background: linear-gradient(#d9ead3, transparent 46%); }
+.story-stage[data-backdrop="lanka"], .story-stage[data-backdrop="fight"] { background: linear-gradient(#f3d0c4, transparent 42%); }
+.story-stage[data-backdrop="bridge"], .story-stage[data-backdrop="river"] { background: linear-gradient(#d5e6f5, transparent 46%); }
+.story-stage[data-backdrop="diwali"] { background: linear-gradient(#ffe7a3, transparent 50%); }
+.story-stage[data-backdrop="mountain"], .story-stage[data-backdrop="leap"] { background: linear-gradient(#e7eef2, transparent 40%); }
+.story-stage[data-backdrop="garden"] { background: linear-gradient(#e5f2d8, transparent 46%); }
+
+.story-leg-l, .story-leg-r, .story-arm-l, .story-arm-r, .story-tail, .story-flame { transform-box: fill-box; transform-origin: center; }
+.story-leg-l { animation: story-step 0.5s ease-in-out infinite; }
+.story-leg-r { animation: story-step 0.5s ease-in-out infinite reverse; }
+.story-arm-l { animation: story-arm 0.7s ease-in-out infinite; }
+.story-arm-r { animation: story-arm 0.7s ease-in-out infinite reverse; }
+.story-tail { animation: story-tail 1.2s ease-in-out infinite; }
+.story-boss .story-flame { animation: story-flame 0.25s ease-in-out infinite; }
+@keyframes story-step { 50% { transform: rotate(14deg); } }
+@keyframes story-arm { 50% { transform: rotate(16deg); } }
+@keyframes story-tail { 50% { transform: rotate(20deg); } }
+@keyframes story-flame { 50% { transform: scaleY(1.35); } }
+.story-chase-run { transition-duration: 0.4s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .story-actor, .story-leg-l, .story-leg-r, .story-arm-l, .story-arm-r, .story-tail, .story-flame, .old-finger, .story-overlay-out { animation: none; transition: none; }
+}
+@media (max-width: 640px) {
+  .story-line { grid-template-columns: 1fr; }
+  .story-actor { width: 72px; }
+}

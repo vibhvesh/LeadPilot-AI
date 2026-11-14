@@ -48,6 +48,9 @@ def init_database(url: str) -> None:
     from app.outreach.schema import upgrade as upgrade_outreach
 
     upgrade_outreach(engine)
+    from app.story.schema import upgrade as upgrade_story
+
+    upgrade_story(engine)
 
 
 def _ensure_columns(bound) -> None:
