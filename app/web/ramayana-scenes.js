@@ -32,6 +32,16 @@
     "Stick se point, jetpack se exit.",
   ];
 
+  const BLESSINGS = [
+    "Main Valmiki. Yeh katha maine likhi. Sab ruko, pranam.",
+    "Narad, aage badho. Mera aashirvad saath hai.",
+    "Hath jodo. Jo chori chal rahi thi, woh yahin rukti hai.",
+    "Palm-patra pe yeh pankti hai: prem se jhuko.",
+    "Betaon, dhanush neeche. Sir jhukaao.",
+    "Aashirvad. Ab katha phir chale.",
+    "Ant mein bhi main hoon. Ram Rajya par shanti.",
+  ];
+
   function beat(id, title, backdrop, caption, cast, extras) {
     return { id, title, backdrop, caption, cast, extras: extras || [] };
   }
@@ -124,6 +134,8 @@
         lines["old-man-boss"] = PLANS[gagIndex % PLANS.length];
         lines.chase = "Pakdo Rocket Boss aur Old Man Boss ko!";
       }
+      const blessing = index === 0 || index === BEATS.length - 1 || index % 9 === 0;
+      if (blessing) lines.valmiki = BLESSINGS[Math.floor(index / 9) % BLESSINGS.length];
       return {
         id: beat.id,
         title: beat.title,
@@ -133,6 +145,7 @@
         extras: beat.extras,
         lines: lines,
         gag: gag,
+        blessing: blessing,
         play: playFor(beat.backdrop),
         duration: beat.id === "s55" ? 12000 : 6000 + (index % 7) * 800,
       };
@@ -149,6 +162,9 @@
         out.push({ scene_id: scene.id, actor: "rocket-boss", label: scene.title + " · Rocket Boss", text: scene.lines["rocket-boss"] });
         out.push({ scene_id: scene.id, actor: "old-man-boss", label: scene.title + " · Old Man Boss", text: scene.lines["old-man-boss"] });
         out.push({ scene_id: scene.id, actor: "chase", label: scene.title + " · chase", text: scene.lines.chase });
+      }
+      if (scene.blessing) {
+        out.push({ scene_id: scene.id, actor: "valmiki", label: scene.title + " · Maharishi Valmiki", text: scene.lines.valmiki });
       }
       return out;
     });

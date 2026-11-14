@@ -53,9 +53,20 @@
 @keyframes story-tail { 50% { transform: rotate(20deg); } }
 @keyframes story-flame { 50% { transform: scaleY(1.35); } }
 .story-chase-run { transition-duration: 0.4s; }
+.story-sage { z-index: 4; width: 108px; }
+.story-pranam { transform: translateY(12px) rotate(14deg); transform-origin: bottom center; }
+.story-pranam .story-leg-l, .story-pranam .story-leg-r, .story-pranam .story-arm-l, .story-pranam .story-arm-r, .story-pranam .story-tail, .story-pranam .story-flame, .story-pranam .old-finger { animation-play-state: paused; }
+.story-namaste { position: absolute; left: 28px; bottom: 46px; width: 22px; height: 26px; }
+.story-sheepish .rocket-gada { opacity: 0; }
+.story-dropped { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: #e2b657; box-shadow: 10px 2px 0 #c4554a; }
+.story-glow { position: absolute; left: 4%; bottom: 8%; width: 180px; height: 180px; border-radius: 50%; background: transparent; }
+.story-glow-on { background: radial-gradient(circle, rgba(255, 214, 120, 0.8), rgba(255, 214, 120, 0) 68%); }
+.story-blessing .valmiki-hand { transform-box: fill-box; transform-origin: center; animation: story-bless 0.8s ease-in-out infinite; }
+.story-paused { opacity: 0.25; }
+@keyframes story-bless { 50% { transform: translateY(-4px); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .story-actor, .story-leg-l, .story-leg-r, .story-arm-l, .story-arm-r, .story-tail, .story-flame, .old-finger, .story-overlay-out { animation: none; transition: none; }
+  .story-actor, .story-leg-l, .story-leg-r, .story-arm-l, .story-arm-r, .story-tail, .story-flame, .old-finger, .valmiki-hand, .story-overlay-out { animation: none; transition: none; }
 }
 @media (max-width: 640px) {
   .story-line { grid-template-columns: 1fr; }

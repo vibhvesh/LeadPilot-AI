@@ -39,7 +39,7 @@
       const details = document.createElement("details");
       details.className = "story-scene";
       const summary = document.createElement("summary");
-      summary.textContent = scene.id + " " + scene.title + (scene.gag ? " · Rocket Boss and Old Man Boss" : "");
+      summary.textContent = scene.id + " " + scene.title + (scene.gag ? " · Rocket Boss and Old Man Boss" : "") + (scene.blessing ? " · Valmiki" : "");
       details.appendChild(summary);
       window.RamayanaScenes.rows().filter(function (item) { return item.scene_id === scene.id; }).forEach(function (item) {
         const row = document.createElement("div");

@@ -54,6 +54,24 @@ assert.equal((cast.svg("ravana").match(/ravana-head/g) || []).length, 10);
 for (let team = 1; team <= 7; team += 1) assert.match(cast.svg(`team-${team}`), /story-extra/);
 
 const sample = list[0];
+const visits = list.map((scene, index) => (scene.blessing ? index : -1)).filter((index) => index >= 0);
+assert.equal(visits[0], 0);
+assert.equal(visits[visits.length - 1], 54);
+for (let i = 1; i < visits.length; i += 1) {
+  const gap = visits[i] - visits[i - 1];
+  assert.ok(gap >= 8 && gap <= 10, `valmiki gap ${gap}`);
+}
+assert.ok(list[0].lines.valmiki);
+assert.ok(list[54].lines.valmiki);
+assert.match(list[0].lines.valmiki, /Valmiki/);
+const sage = cast.svg("valmiki");
+["valmiki-beard", "valmiki-topknot", "valmiki-hair", "valmiki-dhoti", "valmiki-shawl", "valmiki-beads", "valmiki-tilak", "valmiki-staff", "valmiki-palm", "valmiki-smile", "valmiki-hand"].forEach((token) => {
+  assert.match(sage, new RegExp(token));
+});
+assert.equal(/elon|musk/i.test(sage), false);
+assert.equal(cast.name("valmiki"), "Maharishi Valmiki");
+assert.equal(story.textFor(list[0], "valmiki", {"s01:valmiki": "Aashirvad, beta."}), "Aashirvad, beta.");
+
 assert.equal(story.textFor(sample, "narad", {}), sample.caption);
 assert.equal(story.textFor(sample, "narad", {"s01:narad": "Edited line"}), "Edited line");
 assert.equal(boot.IDLE_MS, 120000);
