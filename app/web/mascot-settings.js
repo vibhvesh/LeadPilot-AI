@@ -1,7 +1,7 @@
 /* Preferences for the corner cast. The account is the source of truth; this browser remembers a copy. */
 (function (root) {
   const STORAGE_KEY = "leadpilot-mascot-prefs";
-  const DEFAULTS = {character: "hanuman", enabled: true, idle_ms: 2600, tone: "cheeky", size: "medium", side: "right"};
+  const DEFAULTS = {character: "hanuman", enabled: true, idle_ms: 2600, tone: "cheeky", size: "medium", side: "right", family_friendly: false, rocket_sound: false};
   let panel = null;
   let current = Object.assign({}, DEFAULTS);
   let workspaceDefault = "hanuman";
@@ -61,6 +61,9 @@
     const seconds = (Number(current.idle_ms) || 2600) / 1000;
     panel.querySelector("[data-grid]").innerHTML = grid();
     panel.querySelector("[data-enabled]").checked = current.enabled !== false;
+    const family = panel.querySelector("[data-family]");
+    family.checked = !!current.family_friendly || !!current.family_friendly_forced;
+    family.disabled = !!current.family_friendly_forced;
     panel.querySelector("[data-pref='tone']").value = current.tone || "cheeky";
     panel.querySelector("[data-pref='size']").value = current.size || "medium";
     panel.querySelector("[data-pref='side']").value = current.side || "right";
@@ -83,6 +86,7 @@
       <div data-grid></div>
       <div class="mascot-options">
         <label><span><input type="checkbox" data-enabled> Show the mascot</span></label>
+        <label><span><input type="checkbox" data-family> Family-friendly mode</span> Hides the beer mug and the cigar.</label>
         <label>Stillness before it visits<span data-idle-label>2.6 seconds</span>
           <input type="range" min="1500" max="10000" step="100" data-idle>
         </label>
@@ -93,6 +97,7 @@
       <p class="mascot-note" data-default-note></p>
       <div class="mascot-row" data-admin hidden>
         <label>Workspace default<select data-workspace></select></label>
+        <label><span><input type="checkbox" data-force-family> Require family-friendly mode</span></label>
         <button type="button" class="btn small" data-save-default>Save default</button>
       </div>
       <div class="mascot-row">
@@ -112,6 +117,10 @@
     panel.querySelector("[data-enabled]").addEventListener("change", function (event) {
       save({enabled: event.target.checked});
     });
+    panel.querySelector("[data-family]").addEventListener("change", function (event) {
+      if (current.family_friendly_forced) return;
+      save({family_friendly: event.target.checked});
+    });
     panel.querySelector("[data-idle]").addEventListener("input", function (event) {
       current.idle_ms = Number(event.target.value);
       panel.querySelector("[data-idle-label]").textContent = (current.idle_ms / 1000).toFixed(1) + " seconds";
@@ -127,6 +136,9 @@
       });
     });
     panel.querySelector("[data-save-default]").addEventListener("click", saveDefault);
+    panel.querySelector("[data-force-family]").addEventListener("change", function (event) {
+      saveFamily(event.target.checked);
+    });
     return panel;
   }
 
@@ -149,6 +161,8 @@
       return `<option value="${item.id}">${item.name}</option>`;
     }).join("");
     select.value = workspaceDefault;
+    const force = panel.querySelector("[data-force-family]");
+    if (force) force.checked = !!current.family_friendly_forced;
   }
 
   async function save(patch) {
@@ -171,6 +185,20 @@
       if (root.LeadPilot.toast) root.LeadPilot.toast("Saved in this browser. " + error.message);
     } finally {
       saving = false;
+    }
+  }
+
+  async function saveFamily(enabled) {
+    if (!root.LeadPilot) return;
+    try {
+      const saved = await root.LeadPilot.api("/api/settings/mascot", {method: "PUT", body: {family_friendly: enabled}});
+      current.family_friendly_forced = !!saved.family_friendly;
+      if (current.family_friendly_forced) current.family_friendly = true;
+      emit(current);
+      if (root.LeadPilot.toast) root.LeadPilot.toast(enabled ? "Family-friendly mode is required" : "Family-friendly mode is optional");
+      paint();
+    } catch (error) {
+      if (root.LeadPilot.toast) root.LeadPilot.toast(error.message);
     }
   }
 

@@ -1,0 +1,70 @@
+/* Rocket Boss props and the angry storm-off. Static when motion is reduced. */
+.rocket-mug, .rocket-cigar, .rocket-smoke { display: none; }
+.hanuman.is-beer .rocket-mug { display: block; }
+.hanuman.is-smoking .rocket-cigar, .hanuman.is-smoking .rocket-smoke { display: block; }
+.hanuman.is-family .rocket-mug,
+.hanuman.is-family .rocket-cigar,
+.hanuman.is-family .rocket-smoke { display: none; }
+.rocket-puff { transform-origin: center; }
+.hanuman.is-smoking .rocket-puff { animation: rocket-puff 1.1s ease-out infinite; }
+.hanuman.is-smoking .rocket-puff-2 { animation-delay: .25s; }
+.hanuman.is-smoking .rocket-puff-3 { animation-delay: .5s; }
+@keyframes rocket-puff {
+  0% { opacity: .2; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-8px); }
+}
+.hanuman.is-dancing .rocket-boss-body { transform-origin: 40px 98px; animation: rocket-dance .4s ease-in-out infinite; }
+@keyframes rocket-dance {
+  0%, 100% { transform: rotate(-6deg); }
+  50% { transform: rotate(6deg); }
+}
+.rocket-sound {
+  pointer-events: auto;
+  display: none;
+  margin-top: 4px;
+  border: 1px solid #d5dce7;
+  border-radius: 999px;
+  background: #fff;
+  color: #172033;
+  font-size: 10px;
+  font-weight: 700;
+  min-height: 28px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.hanuman[data-character="rocket-boss"] .rocket-sound { display: inline-block; }
+.hanuman.is-angry .mascot-svg { filter: sepia(.4) saturate(2.4) hue-rotate(-18deg); }
+.hanuman.is-angry .rocket-smile, .hanuman.is-angry .mascot-svg path[class$="smile"] { display: none; }
+.hanuman.is-angry .hanuman-hit { position: relative; }
+.hanuman.is-angry .hanuman-hit::before,
+.hanuman.is-angry .hanuman-hit::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+.hanuman.is-angry .hanuman-hit::before {
+  width: 8px;
+  height: 8px;
+  left: 18px;
+  top: 2px;
+  border-radius: 50%;
+  background: #f4f7fb;
+  box-shadow: 16px -2px 0 #f4f7fb;
+  animation: rocket-puff .8s ease-out infinite;
+}
+.hanuman.is-angry .hanuman-hit::after {
+  left: 22px;
+  top: 46px;
+  width: 16px;
+  height: 8px;
+  border-bottom: 2px solid #b42318;
+  border-radius: 0 0 10px 10px;
+  transform: rotate(180deg);
+}
+.hanuman.is-away { opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .hanuman.is-smoking .rocket-puff,
+  .hanuman.is-dancing .rocket-boss-body,
+  .hanuman.is-angry .hanuman-hit::before { animation: none; }
+  .hanuman { transition: opacity .2s linear; }
+}

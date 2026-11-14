@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.audit.service import record
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_module
-from app.mascot.preferences import resolve, save, set_workspace_default
+from app.mascot.preferences import resolve, save, set_workspace_default, set_workspace_family_friendly, workspace_character
 
 router = APIRouter()
 
@@ -33,7 +33,17 @@ def put_preferences(body: dict, db: Session = Depends(get_db), actor=Depends(get
 
 @router.put("/api/settings/mascot")
 def put_default(body: dict, db: Session = Depends(get_db), actor=Depends(require_module("settings", manage=True))):
-    character = set_workspace_default(db, str((body or {}).get("character") or ""))
-    record(db, user=actor, action="mascot_default", module="settings", target=character, detail={"character": character})
+    payload = body or {}
+    if payload.get("character"):
+        character = set_workspace_default(db, str(payload.get("character")))
+    else:
+        character = workspace_character(db)
+    family = None
+    if "family_friendly" in payload:
+        family = set_workspace_family_friendly(db, bool(payload.get("family_friendly")))
+    record(db, user=actor, action="mascot_default", module="settings", target=character, detail={
+        "character": character,
+        "family_friendly": family,
+    })
     db.commit()
-    return {"character": character}
+    return {"character": character, "family_friendly": family}

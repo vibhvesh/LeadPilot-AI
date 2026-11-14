@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, Integer, String
+from sqlalchemy import JSON, Boolean, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -41,4 +41,5 @@ class WorkspaceSettings(Base):
     icp_min_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     icp_keywords: Mapped[str] = mapped_column(String(500), default='"staffing services" "agencies welcome"')
     mascot_character: Mapped[str] = mapped_column(String(40), default="hanuman")
+    mascot_family_friendly: Mapped[bool] = mapped_column(Boolean, default=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)

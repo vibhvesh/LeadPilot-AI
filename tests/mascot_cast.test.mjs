@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {createRequire} from "node:module";
 
 const require = createRequire(import.meta.url);
+require("../app/web/mascot-fun.js");
 require("../app/web/mascot-ramayana.js");
 require("../app/web/mascot-mahabharata.js");
 const characters = require("../app/web/mascot-characters.js");
@@ -33,7 +34,16 @@ const ids = list.map((item) => item.id);
 assert.deepEqual(ids.slice(0, 5), ["hanuman", "mango", "noodle", "pickle", "biscuit"]);
 for (const id of ramayana) assert.equal(list.find((item) => item.id === id).group, "ramayana");
 for (const id of mahabharata) assert.equal(list.find((item) => item.id === id).group, "mahabharata");
-assert.deepEqual(characters.GROUPS.map((group) => group.id), ["classic", "ramayana", "mahabharata"]);
+assert.deepEqual(characters.GROUPS.map((group) => group.id), ["classic", "ramayana", "mahabharata", "fun"]);
+const boss = list.find((item) => item.id === "rocket-boss");
+assert.equal(boss.group, "fun");
+assert.equal(boss.idleMs, 10000);
+assert.match(boss.svg, /rocket-shirt/);
+assert.match(boss.svg, /rocket-badge/);
+assert.match(boss.svg, /rocket-ship/);
+assert.match(boss.svg, /mascot-leg-left/);
+assert.match(boss.svg, /mascot-leg-right/);
+assert.match(characters.quip("rocket-boss", {kind: "lead-top", facts: {company: "Pad", score: 9}}, () => 0), /Shipping it|Mars|rocket/i);
 
 for (const [id, prop] of Object.entries(props)) {
   const item = characters.byId(id);

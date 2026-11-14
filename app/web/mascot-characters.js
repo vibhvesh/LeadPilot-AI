@@ -362,6 +362,7 @@
       pose: character.pose,
       blurb: character.blurb,
       group: character.group || "classic",
+      idleMs: character.idleMs || 0,
       svg: character.svg(),
     };
   }
@@ -372,6 +373,7 @@
       {id: "classic", label: "Classic"},
       {id: "ramayana", label: "Ramayana"},
       {id: "mahabharata", label: "Mahabharata"},
+      {id: "fun", label: "Fun"},
     ],
     list: function () { return CHARACTERS.map(function (character) { return describe(character.id); }); },
     byId: function (id) { const character = byId(id); return character ? describe(character.id) : null; },

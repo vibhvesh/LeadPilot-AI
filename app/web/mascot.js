@@ -17,7 +17,11 @@
   let poseIndex = 0;
   let pinToken = 0;
   let spotlightTimer = 0;
-  let prefs = {enabled: true, idle_ms: 2600, tone: "cheeky", size: "medium", side: "right", character: "hanuman"};
+  let prefs = {enabled: true, idle_ms: 2600, tone: "cheeky", size: "medium", side: "right", character: "hanuman", family_friendly: false, rocket_sound: false};
+  let away = false;
+  let awayTimer = 0;
+  let clickTimer = 0;
+  const taps = window.MascotAnger ? window.MascotAnger.createTracker({windowMs: 600, need: 3, cooldownMs: 10000}) : function () { return {fired: false, ignored: false}; };
 
   function reducedMotion() {
     return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -97,8 +101,19 @@
     closePicker();
   }
 
+  function chosenCharacter() {
+    if (prefs.character && window.MascotCharacters.byId(prefs.character)) return prefs.character;
+    return readCharacter();
+  }
+
+  function applyIdle() {
+    const spec = window.MascotCharacters.byId(characterId);
+    const idle = spec && spec.idleMs ? spec.idleMs : prefs.idle_ms;
+    if (window.MascotIdle && window.MascotIdle.setMouseIdle) window.MascotIdle.setMouseIdle(idle);
+  }
+
   function mount() {
-    characterId = readCharacter();
+    characterId = chosenCharacter();
     host = document.createElement("div");
     host.id = "hanuman";
     host.className = "hanuman is-fixed";
@@ -111,6 +126,7 @@
         <button type="button" class="hanuman-next" aria-label="Next mascot">Next</button>
         <button type="button" class="hanuman-settings">Settings</button>
         <button type="button" class="hanuman-hide">Hide</button>
+        <button type="button" class="rocket-sound" aria-pressed="false">Sound off</button>
       </div>`;
     restore = document.createElement("button");
     restore.type = "button";
@@ -127,7 +143,7 @@
     picker = host.querySelector(".hanuman-picker");
     nameButton = host.querySelector(".hanuman-name");
     renderCharacter();
-    hit.addEventListener("click", onCharacterClick);
+    hit.addEventListener("click", onHit);
     bubble.addEventListener("click", onBubbleClick);
     nameButton.addEventListener("click", function () {
       const open = picker.hidden;
@@ -143,6 +159,14 @@
     });
     host.querySelector(".hanuman-settings").addEventListener("click", function () {
       if (window.MascotSettings) window.MascotSettings.open();
+    });
+    host.querySelector(".rocket-sound").addEventListener("click", function (event) {
+      event.stopPropagation();
+      prefs.rocket_sound = !prefs.rocket_sound;
+      const button = event.currentTarget;
+      button.textContent = prefs.rocket_sound ? "Sound on" : "Sound off";
+      button.setAttribute("aria-pressed", prefs.rocket_sound ? "true" : "false");
+      if (window.MascotSettings) window.MascotSettings.save({rocket_sound: prefs.rocket_sound});
     });
     host.querySelector(".hanuman-hide").addEventListener("click", function () {
       prefs.enabled = false;
@@ -233,6 +257,8 @@
   }
 
   function goHome() {
+    if (away) return;
+    if (window.MascotRocket) window.MascotRocket.stop(host);
     visiting = false;
     currentCue = null;
     hideBubble();
@@ -261,8 +287,66 @@
     catch (error) { return {kind: "generic", selector: "section.page.active h1", facts: {}}; }
   }
 
+  function onHit() {
+    if (hidden() || !taps) return;
+    const result = taps(Date.now());
+    if (result.ignored || away) return;
+    if (result.fired) {
+      window.clearTimeout(clickTimer);
+      stormOff();
+      return;
+    }
+    window.clearTimeout(clickTimer);
+    clickTimer = window.setTimeout(onCharacterClick, 280);
+  }
+
+  function stormOff() {
+    away = true;
+    visiting = false;
+    if (window.MascotRocket) window.MascotRocket.stop(host);
+    host.classList.add("is-angry");
+    showBubble(window.MascotAnger.leaveLine(characterId));
+    if (idleControl) idleControl.pause();
+    if (reducedMotion()) host.classList.add("is-away");
+    else {
+      const top = host.getBoundingClientRect().top;
+      moveTo(prefs.side === "left" ? window.innerWidth + 40 : -180, top);
+    }
+    window.clearTimeout(awayTimer);
+    awayTimer = window.setTimeout(comeBack, window.MascotAnger.COOLDOWN_MS || 10000);
+  }
+
+  function comeBack() {
+    host.classList.remove("is-angry", "is-away");
+    showBubble(window.MascotAnger.returnLine(characterId));
+    away = false;
+    if (reducedMotion()) {
+      host.classList.add("is-fixed");
+      host.classList.remove("is-walking");
+      host.style.left = "";
+      host.style.top = "";
+    } else {
+      const dock = window.MascotIdle.dockPoint(host.offsetWidth || 112, host.offsetHeight || 140, window.innerWidth, window.innerHeight, prefs.side);
+      moveTo(dock.left, dock.top);
+      schedulePin();
+    }
+    if (idleControl) idleControl.endVisit();
+    window.setTimeout(hideBubble, 2800);
+  }
+
+  function rocketVisit(text) {
+    if (characterId !== "rocket-boss" || !window.MascotRocket || away) return;
+    window.MascotRocket.begin(host, {
+      family: !!prefs.family_friendly,
+      reduced: reducedMotion(),
+      sound: !!prefs.rocket_sound,
+      insight: text,
+      say: showBubble,
+    });
+  }
+
   function reveal(info) {
-    if (hidden()) return;
+    if (hidden() || away) return;
     closePicker();
     const insight = currentInsight();
     const text = window.MascotCharacters.quip(characterId, Object.assign({tone: prefs.tone}, insight));
@@ -277,14 +361,16 @@
       host.style.left = "";
       host.style.top = "";
       if (!reducedMotion()) setPose("pose-" + (character().pose || "bounce"));
-      if (idleControl) idleControl.beginVisit(null);
-      return;
-    }
+    if (idleControl) idleControl.beginVisit(null);
+    rocketVisit(text);
+    return;
+  }
     const point = window.MascotIdle.anchorNear(
       info.x, info.y, host.offsetWidth || 112, host.offsetHeight || 140, window.innerWidth, window.innerHeight
     );
     moveTo(point.left, point.top, point);
     if (idleControl) idleControl.beginVisit({x: info.x, y: info.y});
+    rocketVisit(text);
   }
 
   function focusTarget(cue) {
@@ -365,6 +451,7 @@
     host.classList.toggle("hanuman-small", prefs.size === "small");
     host.classList.toggle("hanuman-large", prefs.size === "large");
     if (restore) restore.classList.toggle("hanuman-show-left", prefs.side === "left");
+    host.classList.toggle("is-family", !!prefs.family_friendly);
   }
 
   function usePrefs(next) {
@@ -378,7 +465,10 @@
       prefs.character = incoming.character;
       characterId = incoming.character;
     }
-    if (window.MascotIdle && window.MascotIdle.setMouseIdle) window.MascotIdle.setMouseIdle(prefs.idle_ms);
+    if (typeof incoming.family_friendly === "boolean") prefs.family_friendly = incoming.family_friendly;
+    if (incoming.family_friendly_forced) prefs.family_friendly = true;
+    if (typeof incoming.rocket_sound === "boolean") prefs.rocket_sound = incoming.rocket_sound;
+    applyIdle();
     if (!host) return;
     applyLook();
     renderCharacter();
