@@ -1,0 +1,15 @@
+{
+  "name": "LeadPilot AI",
+  "short_name": "LeadPilot",
+  "icons": [
+    {
+      "src": "/static/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "display": "standalone",
+  "background_color": "#14213d",
+  "theme_color": "#14213d"
+}
