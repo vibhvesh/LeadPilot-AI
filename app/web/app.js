@@ -79,6 +79,7 @@ function readLeadRoute() {
 }
 
 document.querySelectorAll(".tab").forEach((button) => button.addEventListener("click", () => {
+  if (button.dataset.scroll) return;
   if (button.dataset.tab === "performance") show("performance", {url: "/admin/performance"});
   else show(button.dataset.tab);
 }));
@@ -103,11 +104,25 @@ function showProviderStatus() {
 function applyAccess() {
   const admin = state.me.role === "admin" || state.me.role === "super_admin";
   document.documentElement.dataset.role = state.me.role || "";
-  document.querySelectorAll(".tab").forEach((button) => {
-    if (button.hasAttribute("data-admin-only")) { button.hidden = !admin; return; }
+  document.querySelectorAll(".tab, .nav-link").forEach((button) => {
+    if (button.dataset.tab === "performance") { button.hidden = !admin; return; }
+    if (button.hasAttribute("data-admin-only") && !admin) { button.hidden = true; return; }
+    if (!button.classList.contains("tab")) { button.hidden = false; return; }
     const moduleName = TAB_MODULE[button.dataset.tab];
     button.hidden = moduleName ? !can(moduleName) : false;
   });
+  document.querySelectorAll(".nav-group").forEach((group) => {
+    if (group.hasAttribute("data-admin-only")) { group.hidden = !admin; return; }
+    const links = [...group.querySelectorAll(".nav-link")];
+    group.hidden = links.length > 0 && links.every((link) => link.hidden);
+  });
+  const homePerf = $("performance-home-link");
+  if (homePerf) homePerf.hidden = !admin;
+  const navName = $("nav-name");
+  const person = state.me.name || state.me.email || "LeadPilot";
+  if (navName) navName.textContent = person;
+  const avatar = $("nav-avatar");
+  if (avatar) avatar.textContent = person.trim().charAt(0).toUpperCase() || "L";
   document.querySelectorAll("[data-manage]").forEach((el) => { el.hidden = !can(el.dataset.manage, true); });
   const badge = $("pending-badge");
   if (state.me.pending_users) { badge.hidden = false; badge.textContent = state.me.pending_users; }

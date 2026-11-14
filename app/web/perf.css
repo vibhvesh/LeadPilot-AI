@@ -1,44 +1,33 @@
-/* Admin performance deck. Dark tiles, same idea as the flight deck, scoped to this page. */
-.cockpit-perf {
-  display: inline-block;
-  margin-bottom: 6px;
-  color: #b8ffd9;
-  font-size: 12px;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  text-decoration: none;
-  border: 1px solid #3dff9a;
-  border-radius: 999px;
-  padding: 4px 10px;
-}
-.cockpit-perf:hover { background: rgba(61, 255, 154, .12); }
-#performance { color: inherit; }
-.perf-live, .perf-charts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 12px 0; }
+/* Performance page, using the same light cards as the rest of the workspace. */
+#performance { color: inherit; min-width: 0; }
+.perf-live, .perf-charts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 13px; margin: 12px 0; }
 .perf-tile {
-  background: #101820;
-  color: #d7e6dc;
-  border: 1px solid #314556;
-  border-radius: 12px;
-  padding: 12px;
+  background: var(--card, #fff);
+  color: var(--ink, #172033);
+  border: 1px solid var(--line, #d5e2f0);
+  border-left-width: 4px;
+  border-radius: 11px;
+  padding: 17px;
   min-width: 0;
 }
-.perf-tile b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
-.perf-tile span { color: #8aa099; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
-.perf-ok b { color: #3dff9a; }
-.perf-warn b { color: #ffb020; }
-.perf-alert b { color: #ff5a5a; }
+.perf-tile b, .perf-tile .num { display: block; font-size: 27px; font-weight: 750; font-variant-numeric: tabular-nums; color: inherit; }
+.perf-tile span, .perf-tile h2 { color: var(--muted, #68758b); font-size: 12px; font-weight: 650; letter-spacing: 0; text-transform: none; }
+.perf-ok { border-left-color: #167344; }
+.perf-warn { border-left-color: #d97706; }
+.perf-alert { border-left-color: #b42318; }
 .perf-chart { grid-column: span 2; }
 .perf-chart svg { width: 100%; height: 72px; display: block; }
-.perf-chart polyline { fill: none; stroke: #3dff9a; stroke-width: 2; }
+.perf-chart polyline { fill: none; stroke: var(--blue, #2563eb); stroke-width: 2; }
 .perf-ranges { display: flex; flex-wrap: wrap; gap: 8px; }
-.perf-trace { white-space: pre-wrap; overflow: auto; max-height: 280px; background: #0e141c; color: #d7e6dc; padding: 12px; border-radius: 8px; }
+.perf-trace { white-space: pre-wrap; overflow: auto; max-height: 280px; background: #f8fafc; color: var(--ink, #172033); border: 1px solid var(--line, #d5e2f0); padding: 12px; border-radius: 8px; }
 #perf-errors tr { cursor: pointer; }
+#performance table { min-width: 0; }
 @media (max-width: 900px) {
-  .perf-live, .perf-charts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .perf-live, .perf-charts { grid-template-columns: 1fr 1fr; }
   .perf-chart { grid-column: span 2; }
 }
-@media (max-width: 640px) {
-  .perf-live { grid-template-columns: 1fr 1fr; }
-  #performance { padding-bottom: 120px; }
-  #performance .tablewrap, #perf-filters, #perf-detail { margin-right: 112px; }
+@media (max-width: 800px) {
+  .perf-live, .perf-charts { grid-template-columns: 1fr; }
+  .perf-chart { grid-column: auto; }
+  #performance { padding-bottom: 96px; }
 }

@@ -1,10 +1,8 @@
-/* Admin link from the flight deck to the performance page. Hidden for every other role. */
+/* The homepage link is the Performance button in the heading. This file stays so the deck can ask for one. */
 (function (root) {
   root.CockpitPerformance = {
     link: function () {
-      const role = document.documentElement.dataset.role || "";
-      if (role !== "admin" && role !== "super_admin") return "";
-      return '<a class="cockpit-perf" href="/admin/performance">Performance</a>';
+      return "";
     },
   };
 })(window);
