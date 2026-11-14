@@ -26,6 +26,7 @@ from app.dashboard.router import router as dashboard_router
 from app.followups.router import router as followups_router
 from app.leads.router import router as leads_router
 from app.mascot.router import router as mascot_router
+from app.perf.router import router as perf_router
 from app.providers.router import router as providers_router
 from app.search.router import router as search_router
 from app.settings.router import router as settings_router
@@ -41,9 +42,20 @@ PUBLIC_API = {"/api/auth/config"}
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    import asyncio
+
     with session_scope() as db:
         seed(db, get_settings())
-    yield
+    task = None
+    if get_settings().app_env != "test":
+        from app.perf.loop import run_sampler
+
+        task = asyncio.create_task(run_sampler())
+    try:
+        yield
+    finally:
+        if task is not None:
+            task.cancel()
 
 
 def create_app() -> FastAPI:
@@ -98,6 +110,7 @@ def create_app() -> FastAPI:
     app.include_router(agents_router)
     app.include_router(providers_router)
     app.include_router(users_router)
+    app.include_router(perf_router)
     app.include_router(followups_router)
     app.include_router(comments_router)
     app.include_router(audit_router)
@@ -140,6 +153,14 @@ def create_app() -> FastAPI:
         """Chess tab. Same shell as the rest of the workspace."""
         return _workspace(request)
 
+    @app.get("/admin/performance")
+    def performance_page(request: Request):
+        if not _approved(request):
+            return RedirectResponse("/login", status_code=302)
+        if not _is_admin(request):
+            return JSONResponse({"detail": "Admin only"}, status_code=403)
+        return _workspace(request)
+
     @app.get("/login")
     def login_page(request: Request):
         if _approved(request):
@@ -150,11 +171,23 @@ def create_app() -> FastAPI:
     def favicon():
         return Response(status_code=204)
 
+    from app.perf.middleware import PerfMiddleware
+
+    app.add_middleware(PerfMiddleware)
     app.mount("/static", StaticFiles(directory=WEB), name="static")
     return app
 
 
 _CHESS_ORIGIN = "https://vibhvesh.github.io"
+
+
+def _is_admin(request: Request) -> bool:
+    db = database.SessionLocal()
+    try:
+        user = user_from_request(db, request)
+        return user is not None and user.role in {"admin", "super_admin"}
+    finally:
+        db.close()
 
 
 def _approved(request: Request) -> bool:

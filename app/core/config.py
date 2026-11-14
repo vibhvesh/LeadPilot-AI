@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     ai_search_max_rounds: int = 2
     grokbot_webhook_url: str = ""
     grokbot_webhook_secret: str = ""
+    perf_retention_days: int = 5
+    perf_sample_seconds: int = 45
+    error_retention_days: int = 30
+    client_error_per_minute: int = 20
 
     @property
     def super_admin(self) -> str:

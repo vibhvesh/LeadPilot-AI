@@ -52,8 +52,9 @@
       }
     }).join("");
     node.classList.toggle("cockpit-still", reduced());
+    const perf = root.CockpitPerformance ? root.CockpitPerformance.link() : "";
     node.innerHTML = '<div class="cockpit-head"><div><div class="cockpit-kicker">Flight deck</div><div class="cockpit-title">Workspace instruments</div></div>' +
-      '<div class="cockpit-meta"><time id="cockpit-clock"></time><span id="cockpit-updated">Updated ' + widgets.esc(updated) + "</span>" +
+      '<div class="cockpit-meta">' + perf + '<time id="cockpit-clock"></time><span id="cockpit-updated">Updated ' + widgets.esc(updated) + "</span>" +
       '<span class="cockpit-live">Refresh ' + widgets.esc(summary.refresh_seconds || 60) + "s</span></div></div>" +
       '<div class="cockpit-annunciator" role="group" aria-label="Warning lights">' + annunciator + "</div>" +
       '<div class="cockpit-grid">' + panels + "</div>" +

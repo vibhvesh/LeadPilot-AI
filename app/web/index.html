@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="/static/cockpit/cockpit.css">
   <link rel="stylesheet" href="/static/flashcards.css">
   <link rel="stylesheet" href="/static/nav.css">
+  <link rel="stylesheet" href="/static/perf.css">
   <style>
     #games.page.active{display:flex;flex-direction:column;min-height:calc(100vh - 180px);min-height:calc(100dvh - 180px)}
     .games-frame{width:100%;flex:1 1 auto;height:calc(100vh - 230px);height:calc(100dvh - 230px);min-height:60vh;min-height:60dvh;border:1px solid #e5eaf2;border-radius:11px;background:#fff}
@@ -41,7 +42,6 @@
   <div class="who"><b id="who-email">…</b><span id="who-role"></span></div>
 </header>
 <main class="shell">
-
   <section id="overview" class="page active">
     <div class="heading"><div><h1 id="greeting">Workspace</h1><div class="muted">Every instrument on the flight deck reads the workspace.</div></div><span class="demo" id="mode-pill">WORKSPACE</span></div>
     <p class="error" id="provider-status" hidden></p>
@@ -49,6 +49,7 @@
       <div><b>Start with a target profile.</b><div class="muted">Save search criteria, run it, then score the new leads in GrokBot. A person still has to mark anyone Qualified.</div></div>
       <button class="btn" type="button" data-jump="search">Create a search</button>
     </div>
+    <a id="performance-home-link" href="/admin/performance" hidden>Performance</a>
     <div id="cockpit" class="cockpit" aria-label="Flight deck">
       <p class="cockpit-fault">Instruments standing by</p>
     </div>
@@ -410,12 +411,38 @@
       <div id="preset-editor"></div>
     </div>
   </section>
+  <section id="performance" class="page">
+    <div class="heading"><div><h1>Performance</h1><div class="muted">Host, requests, and the error log. Admins only.</div></div></div>
+    <div id="perf-live" class="perf-live" aria-live="polite"></div>
+    <div class="perf-ranges" role="group" aria-label="History range">
+      <button type="button" class="btn secondary small" data-range="1h">1h</button>
+      <button type="button" class="btn secondary small" data-range="6h">6h</button>
+      <button type="button" class="btn secondary small" data-range="24h">24h</button>
+      <button type="button" class="btn secondary small" data-range="3d">3d</button>
+      <button type="button" class="btn secondary small" data-range="5d">5d</button>
+    </div>
+    <div id="perf-charts"></div>
+    <form id="perf-filters" class="card">
+      <div class="split3">
+        <div class="field"><label for="perf-level">Level</label><select id="perf-level"><option value="">All</option><option value="error">Server error</option><option value="warning">Client response</option><option value="client">Browser</option></select></div>
+        <div class="field"><label for="perf-source">Source</label><select id="perf-source"><option value="">All</option><option value="server">Server</option><option value="client">Client</option></select></div>
+        <div class="field"><label for="perf-path">Path</label><input id="perf-path" placeholder="/api/leads"></div>
+        <div class="field"><label for="perf-user">User id</label><input id="perf-user" inputmode="numeric"></div>
+        <div class="field"><label for="perf-since">From</label><input id="perf-since" type="date"></div>
+        <div class="field"><label for="perf-until">To</label><input id="perf-until" type="date"></div>
+        <div class="field"><label for="perf-resolved">Resolved</label><select id="perf-resolved"><option value="">All</option><option value="false">Open</option><option value="true">Resolved</option></select></div>
+      </div>
+      <button class="btn secondary" type="submit">Filter errors</button>
+    </form>
+    <div class="tablewrap"><table><thead><tr><th>Last seen</th><th>Level</th><th>Path</th><th>Count</th><th>Status</th></tr></thead><tbody id="perf-errors"></tbody></table></div>
+    <div id="perf-detail" class="card" hidden></div>
+  </section>
   <div class="foot">CanberraAI LeadPilot · LinkTMS · TMS-LEAD</div>
   <section id="help" class="page">
     <div class="heading"><div><h1>Help</h1><div class="muted">A short guide to the workspace.</div></div></div>
     <div class="card">
       <h2>How to move around</h2>
-      <p>Home is the flight deck. Leads, Social, and Pulse stay in the nav. Search, Games, Team, Settings, the mascot, and admin tools are under More.</p>
+      <p>Home is the flight deck. Leads, Social, and Pulse stay in the nav. Search, Games, Team, Settings, the mascot, and admin tools are under More. Admins open Performance from the flight deck or from More.</p>
       <p>LeadPilot never posts to a social network. Copy a reply, then open the post yourself.</p>
       <p>A lead becomes Qualified only when a person marks it. Agents draft. They do not send.</p>
     </div>
@@ -446,6 +473,7 @@
   <button class="tab" data-tab="activity" type="button" role="menuitem">Activity</button>
   <button class="tab" data-tab="updates" type="button" role="menuitem">Comments</button>
   <button class="tab" data-tab="settings" type="button" role="menuitem">Settings</button>
+  <button class="tab" data-tab="performance" data-admin-only type="button" role="menuitem">Performance</button>
   <button class="tab" data-tab="help" type="button" role="menuitem">Help</button>
   <button id="mascot-settings-open" type="button" role="menuitem">Mascot settings</button>
   <button id="signout" type="button" role="menuitem">Log out</button>
@@ -465,6 +493,7 @@
 <script src="/static/cockpit/bot.js"></script>
 <script src="/static/cockpit/health.js"></script>
 <script src="/static/cockpit/team.js"></script>
+<script src="/static/cockpit/performance.js"></script>
 <script src="/static/cockpit/cockpit.js"></script>
 <script src="/static/select.js"></script>
 <script src="/static/controls.js"></script>
@@ -485,5 +514,7 @@
 <script src="/static/mascot-idle.js"></script>
 <script src="/static/mascot-insights.js"></script>
 <script src="/static/mascot.js"></script>
+<script src="/static/perf-report.js"></script>
+<script src="/static/perf.js"></script>
 </body>
 </html>

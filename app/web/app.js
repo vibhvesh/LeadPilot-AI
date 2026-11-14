@@ -1,8 +1,9 @@
 const TAB_MODULE = {
   overview: "dashboard", leads: "leads", pipeline: "pipeline", followups: "followups",
   team: "team", reports: "reports", social: "social", pulse: "pulse", grokbot: "grokbot", bots: "dashboard", users: "users", search: "search",
-  apis: "apikeys", ai: "ai", geo: "geo", activity: "activity", updates: "comments", settings: "settings",
+  apis: "apikeys", ai: "ai", geo: "geo", activity: "activity", updates: "comments",   settings: "settings",
   games: "games",
+  performance: "activity",
 };
 const ROLE_LABEL = {super_admin: "Super Admin", admin: "Admin", member: "Member"};
 const state = {me: null, leads: [], selectedLead: null, selectedUser: null, modules: [], roles: {}};
@@ -77,7 +78,10 @@ function readLeadRoute() {
   return null;
 }
 
-document.querySelectorAll(".tab").forEach((button) => button.addEventListener("click", () => show(button.dataset.tab)));
+document.querySelectorAll(".tab").forEach((button) => button.addEventListener("click", () => {
+  if (button.dataset.tab === "performance") show("performance", {url: "/admin/performance"});
+  else show(button.dataset.tab);
+}));
 document.querySelectorAll("[data-jump]").forEach((button) => button.addEventListener("click", () => show(button.dataset.jump)));
 $("signout").addEventListener("click", async () => { await fetch("/auth/logout", {method: "POST"}); location.href = "/login"; });
 
@@ -97,7 +101,10 @@ function showProviderStatus() {
   });
 }
 function applyAccess() {
+  const admin = state.me.role === "admin" || state.me.role === "super_admin";
+  document.documentElement.dataset.role = state.me.role || "";
   document.querySelectorAll(".tab").forEach((button) => {
+    if (button.hasAttribute("data-admin-only")) { button.hidden = !admin; return; }
     const moduleName = TAB_MODULE[button.dataset.tab];
     button.hidden = moduleName ? !can(moduleName) : false;
   });
@@ -123,6 +130,7 @@ async function boot() {
   const wanted = location.hash.slice(1).split("?")[0];
   const onSocial = location.pathname.replace(/\/+$/, "") === "/social";
   const onPulse = location.pathname.replace(/\/+$/, "") === "/pulse";
+  const onPerf = location.pathname.replace(/\/+$/, "") === "/admin/performance";
   const first = document.querySelector(".tab:not([hidden])");
   if (route && can("leads")) {
     const status = route.status || "";
@@ -134,6 +142,7 @@ async function boot() {
     show("leads", {url: "/leads" + location.search});
   } else if (onSocial && can("social")) show("social", {url: "/social"});
   else if (onPulse && can("pulse")) show("pulse", {url: "/pulse"});
+  else if (onPerf && (state.me.role === "admin" || state.me.role === "super_admin")) show("performance", {url: "/admin/performance"});
   else if ((location.pathname.replace(/\/+$/, "") || "/") === "/games" && can("games")) show("games", {url: "/games"});
   else if (wanted && document.getElementById(wanted) && can(TAB_MODULE[wanted])) show(wanted);
   else if (first) show(first.dataset.tab);
@@ -158,6 +167,7 @@ const loaders = {
   activity: loadActivity,
   updates: loadComments,
   settings: loadSettings,
+  performance: () => window.PerfPage && PerfPage.load(),
 };
 
 async function loadOverview() {
