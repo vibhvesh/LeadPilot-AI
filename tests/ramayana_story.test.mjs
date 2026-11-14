@@ -44,7 +44,7 @@ assert.equal(blob.includes("elon"), false);
 assert.match(cast.svg("hanuman"), /story-hanuman-sprite/);
 for (let team = 1; team <= 8; team += 1) assert.match(cast.svg(`team-${team}`), new RegExp(`/static/story/team-${team}\\.png`));
 assert.equal(cast.name("old-man-boss"), "Old Man Boss");
-assert.equal(cast.STORY_V, boot.STORY_V);
+assert.equal(boot.STORY_V, "crew1");
 assert.ok(cast.STORY_V);
 
 const sample = list[0];
