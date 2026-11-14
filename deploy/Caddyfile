@@ -1,4 +1,0 @@
-leads.canberravision.com {
-    encode zstd gzip
-    reverse_proxy app:1102
-}

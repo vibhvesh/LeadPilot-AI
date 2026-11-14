@@ -1,6 +1,6 @@
 # CanberraAI Lead Generation System for TMS LLC — deployment
 
-Render deployment is described in the README (`render.yaml`: web service + Postgres). The steps below are the existing VPS installer.
+The portable Docker install, including a move from the systemd host, is [DOCKER.md](../DOCKER.md). Render deployment is described in the README (`render.yaml`: web service + Postgres). The steps below are the existing fixed-host installer.
 
 Requires Ubuntu with Docker Engine and Docker Compose plugin installed.
 

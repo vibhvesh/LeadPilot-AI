@@ -359,7 +359,11 @@ sudo bash deploy/install.sh --uninstall --purge
 
 The app listens on `127.0.0.1:8000` with one worker. nginx is the public listener. Schema updates run when the service starts and again during `--upgrade`.
 
-The older `bootstrap.sh` path (Docker and Caddy on a fixed host) is still in the repository. Use `deploy/install.sh` for a normal Ubuntu or Debian VPS.
+The older `bootstrap.sh` path (Docker and Caddy on a fixed host) is still in the repository. Use `deploy/install.sh` for a normal Ubuntu or Debian VPS without Docker.
+
+## Docker on any Ubuntu VPS
+
+`docker compose up -d --build` recreates the app, Postgres, and Caddy. On a fresh Ubuntu server, `sudo bash scripts/install-docker-ubuntu.sh` installs Docker and opens SSH, HTTP, and HTTPS in UFW. HTTP on the server IP and automatic HTTPS for a hostname are both configured from `.env`. Moving the existing systemd database is covered in [DOCKER.md](DOCKER.md): dump Postgres on the old host, restore into the container, then switch DNS. `deploy/install.sh` is unchanged.
 
 ## Deploy on Render
 
@@ -375,7 +379,7 @@ The older `bootstrap.sh` path (Docker and Caddy on a fixed host) is still in the
 
 ## Existing VPS
 
-The Ubuntu bootstrap in `bootstrap.sh` still installs Docker, writes `/opt/leadpilot-ai/.env`, and starts Compose behind Caddy for `https://leads.canberravision.com`. It now turns demo mode off and generates `ENCRYPTION_KEY`. Add the Google client to that `.env` and restart:
+The Ubuntu bootstrap in `bootstrap.sh` still installs Docker, writes `/opt/leadpilot-ai/.env`, and starts Compose behind Caddy for `https://leads.canberravision.com`. It turns demo mode off and generates `ENCRYPTION_KEY`. For a portable install, including a move off the systemd host, use [DOCKER.md](DOCKER.md). Add the Google client to that `.env` and restart:
 
 ```bash
 cd /opt/leadpilot-ai && docker compose up -d --build

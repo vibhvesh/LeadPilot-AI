@@ -56,6 +56,15 @@ if [[ "${healthy}" -ne 1 ]]; then
 fi
 
 git pull --ff-only origin main
+if ! grep -q '^TLS_MODE=' .env; then
+  export TLS_MODE=https
+fi
+if ! grep -q '^LEADPILOT_DOMAIN=' .env; then
+  export LEADPILOT_DOMAIN="${DOMAIN}"
+fi
+if ! grep -q '^LEADPILOT_BIND=' .env; then
+  export LEADPILOT_BIND=0.0.0.0
+fi
 docker compose config -q
 docker compose up -d --build --remove-orphans
 
