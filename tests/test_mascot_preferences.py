@@ -90,4 +90,41 @@ def test_member_saves_preferences_and_sees_the_mascot(client):
     fresh = client.get("/api/me/preferences").json()
     assert fresh["character"] == "krishna"
     assert fresh["workspace_default"] == "rama"
-    assert set(CHARACTERS) >= {"hanuman", "rama", "krishna", "ravana", "ghatotkacha"}
+    assert set(CHARACTERS) >= {"hanuman", "rama", "krishna", "ravana", "ghatotkacha", "rocket-boss"}
+
+
+def test_hanuman_is_the_fallback_and_a_saved_character_stays(client):
+    from app.core.database import SessionLocal
+    from app.models.workspace import WorkspaceSettings
+
+    assert login(client, "vibhvesh@gmail.com", "Vibhvesh").status_code == 200
+    fresh = client.get("/api/me/preferences").json()
+    assert fresh["character"] == "hanuman"
+    assert fresh["workspace_default"] == "hanuman"
+    assert fresh["family_friendly"] is False
+    db = SessionLocal()
+    try:
+        row = db.get(WorkspaceSettings, 1)
+        row.mascot_character = "not-a-mascot"
+        db.commit()
+    finally:
+        db.close()
+    fallback = client.get("/api/me/preferences").json()
+    assert fallback["character"] == "hanuman"
+    assert fallback["workspace_default"] == "hanuman"
+    kept = client.put("/api/me/preferences", json={"character": "biscuit"})
+    assert kept.status_code == 200
+    assert kept.json()["character"] == "biscuit"
+    db = SessionLocal()
+    try:
+        row = db.get(WorkspaceSettings, 1)
+        row.mascot_character = "hanuman"
+        db.commit()
+    finally:
+        db.close()
+    assert client.get("/api/me/preferences").json()["character"] == "biscuit"
+    forced = client.put("/api/settings/mascot", json={"family_friendly": True})
+    assert forced.status_code == 200
+    assert forced.json()["family_friendly"] is True
+    assert client.get("/api/me/preferences").json()["family_friendly"] is True
+    assert client.get("/api/me/preferences").json()["family_friendly_forced"] is True
