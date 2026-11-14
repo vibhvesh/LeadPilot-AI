@@ -223,21 +223,20 @@ def test_homepage_serves_the_cockpit_modules(client):
         "cockpit/cockpit.js",
         "cockpit/annunciator.js",
         "cockpit/leads.js",
-        "cockpit/attitude.js",
-        "cockpit/conversion.js",
-        "cockpit/contact.js",
         "cockpit/pipeline.js",
         "cockpit/uncontacted.js",
-        "cockpit/followups.js",
         "cockpit/social.js",
         "cockpit/pulse.js",
-        "cockpit/bot.js",
-        "cockpit/health.js",
-        "cockpit/team.js",
     ):
         assert name in page.text
         asset = client.get("/static/" + name)
         assert asset.status_code == 200, name
+    assert 'id="workspace-nav"' in page.text
+    assert 'id="nav-toggle"' in page.text
+    assert ">Work</h2>" in page.text
     css = client.get("/static/cockpit/cockpit.css").text
     assert "prefers-reduced-motion" in css
-    assert "@media (max-width: 640px)" in css
+    assert "@media (max-width: 800px)" in css
+    assert "gauge" not in css
+    widgets = client.get("/static/cockpit/widgets.js").text
+    assert "gauge" not in widgets

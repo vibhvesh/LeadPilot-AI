@@ -13,7 +13,7 @@ def test_games_route_and_nav(client):
     assert page.status_code == 200
     workspace = page.text.split("ADMINISTRATION", 1)[0]
     assert 'data-tab="games"' in workspace
-    assert ">♟ Games</button>" in workspace
+    assert "♟ Games" in workspace
     assert 'src="https://vibhvesh.github.io/chess-live/"' in page.text
     assert 'allow="microphone; autoplay; clipboard-write"' in page.text
     assert 'href="https://vibhvesh.github.io/chess-live/"' in page.text

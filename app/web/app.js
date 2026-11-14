@@ -1,8 +1,9 @@
 const TAB_MODULE = {
   overview: "dashboard", leads: "leads", pipeline: "pipeline", followups: "followups",
   team: "team", reports: "reports", social: "social", pulse: "pulse", grokbot: "grokbot", bots: "dashboard", users: "users", search: "search",
-  apis: "apikeys", ai: "ai", geo: "geo", activity: "activity", updates: "comments", settings: "settings",
+  apis: "apikeys", ai: "ai", geo: "geo", activity: "activity", updates: "comments",   settings: "settings",
   games: "games",
+  performance: "activity",
 };
 const ROLE_LABEL = {super_admin: "Super Admin", admin: "Admin", member: "Member"};
 const state = {me: null, leads: [], selectedLead: null, selectedUser: null, modules: [], roles: {}};
@@ -77,7 +78,11 @@ function readLeadRoute() {
   return null;
 }
 
-document.querySelectorAll(".tab").forEach((button) => button.addEventListener("click", () => show(button.dataset.tab)));
+document.querySelectorAll(".tab").forEach((button) => button.addEventListener("click", () => {
+  if (button.dataset.scroll) return;
+  if (button.dataset.tab === "performance") show("performance", {url: "/admin/performance"});
+  else show(button.dataset.tab);
+}));
 document.querySelectorAll("[data-jump]").forEach((button) => button.addEventListener("click", () => show(button.dataset.jump)));
 $("signout").addEventListener("click", async () => { await fetch("/auth/logout", {method: "POST"}); location.href = "/login"; });
 
@@ -97,10 +102,27 @@ function showProviderStatus() {
   });
 }
 function applyAccess() {
-  document.querySelectorAll(".tab").forEach((button) => {
+  const admin = state.me.role === "admin" || state.me.role === "super_admin";
+  document.documentElement.dataset.role = state.me.role || "";
+  document.querySelectorAll(".tab, .nav-link").forEach((button) => {
+    if (button.dataset.tab === "performance") { button.hidden = !admin; return; }
+    if (button.hasAttribute("data-admin-only") && !admin) { button.hidden = true; return; }
+    if (!button.classList.contains("tab")) { button.hidden = false; return; }
     const moduleName = TAB_MODULE[button.dataset.tab];
     button.hidden = moduleName ? !can(moduleName) : false;
   });
+  document.querySelectorAll(".nav-group").forEach((group) => {
+    if (group.hasAttribute("data-admin-only")) { group.hidden = !admin; return; }
+    const links = [...group.querySelectorAll(".nav-link")];
+    group.hidden = links.length > 0 && links.every((link) => link.hidden);
+  });
+  const homePerf = $("performance-home-link");
+  if (homePerf) homePerf.hidden = !admin;
+  const navName = $("nav-name");
+  const person = state.me.name || state.me.email || "LeadPilot";
+  if (navName) navName.textContent = person;
+  const avatar = $("nav-avatar");
+  if (avatar) avatar.textContent = person.trim().charAt(0).toUpperCase() || "L";
   document.querySelectorAll("[data-manage]").forEach((el) => { el.hidden = !can(el.dataset.manage, true); });
   const badge = $("pending-badge");
   if (state.me.pending_users) { badge.hidden = false; badge.textContent = state.me.pending_users; }
@@ -123,6 +145,7 @@ async function boot() {
   const wanted = location.hash.slice(1).split("?")[0];
   const onSocial = location.pathname.replace(/\/+$/, "") === "/social";
   const onPulse = location.pathname.replace(/\/+$/, "") === "/pulse";
+  const onPerf = location.pathname.replace(/\/+$/, "") === "/admin/performance";
   const first = document.querySelector(".tab:not([hidden])");
   if (route && can("leads")) {
     const status = route.status || "";
@@ -134,6 +157,7 @@ async function boot() {
     show("leads", {url: "/leads" + location.search});
   } else if (onSocial && can("social")) show("social", {url: "/social"});
   else if (onPulse && can("pulse")) show("pulse", {url: "/pulse"});
+  else if (onPerf && (state.me.role === "admin" || state.me.role === "super_admin")) show("performance", {url: "/admin/performance"});
   else if ((location.pathname.replace(/\/+$/, "") || "/") === "/games" && can("games")) show("games", {url: "/games"});
   else if (wanted && document.getElementById(wanted) && can(TAB_MODULE[wanted])) show(wanted);
   else if (first) show(first.dataset.tab);
@@ -158,6 +182,7 @@ const loaders = {
   activity: loadActivity,
   updates: loadComments,
   settings: loadSettings,
+  performance: () => window.PerfPage && PerfPage.load(),
 };
 
 async function loadOverview() {

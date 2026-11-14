@@ -1,8 +1,7 @@
-/* Loads the summary, paints every instrument, and refreshes about once a minute. */
+/* Loads the summary, paints the homepage cards, and refreshes about once a minute. */
 (function (root) {
-  const PANELS = ["leads", "pipeline", "social", "pulse"];
+  const PANELS = ["pipeline", "social", "discussions", "pulse", "alerts", "uncontacted"];
   let timer = 0;
-  let clockTimer = 0;
   let started = false;
   let last = null;
   let refreshing = false;
@@ -13,16 +12,6 @@
 
   function host() {
     return document.getElementById("cockpit");
-  }
-
-  function tickClock() {
-    const node = document.getElementById("cockpit-clock");
-    if (!node) return;
-    const now = new Date();
-    node.dateTime = now.toISOString();
-    const options = {hour: "2-digit", minute: "2-digit"};
-    if (!reduced()) options.second = "2-digit";
-    node.textContent = now.toLocaleTimeString(undefined, options);
   }
 
   function arm(seconds) {
@@ -41,27 +30,22 @@
     if (!node || !root.CockpitWidgets) return;
     const widgets = root.CockpitWidgets;
     const updated = summary.generated_at ? new Date(summary.generated_at).toLocaleTimeString() : "";
-    const annunciator = root.CockpitAnnunciator ? root.CockpitAnnunciator(summary) : "";
     const panels = PANELS.map(function (name) {
       const draw = root.CockpitPanels && root.CockpitPanels[name];
       if (!draw) return "";
       try {
         return draw(summary);
       } catch (error) {
-        return widgets.frame(name, name, "<h2>" + widgets.esc(name) + "</h2><p class=\"instrument-note\">This instrument could not be drawn.</p>");
+        return widgets.card(name, "<p class=\"muted\">This card could not be drawn.</p>");
       }
     }).join("");
-    node.classList.toggle("cockpit-still", reduced());
-    node.innerHTML = '<div class="cockpit-head"><div><div class="cockpit-kicker">Flight deck</div><div class="cockpit-title">Workspace instruments</div></div>' +
-      '<div class="cockpit-meta"><time id="cockpit-clock"></time><span id="cockpit-updated">Updated ' + widgets.esc(updated) + "</span>" +
-      '<span class="cockpit-live">Refresh ' + widgets.esc(summary.refresh_seconds || 60) + "s</span></div></div>" +
-      '<div class="cockpit-annunciator" role="group" aria-label="Warning lights">' + annunciator + "</div>" +
-      '<div class="cockpit-grid">' + panels + "</div>" +
-      '<p class="cockpit-fault" id="cockpit-fault" hidden></p>';
+    const kpis = root.CockpitPanels && root.CockpitPanels.kpis ? root.CockpitPanels.kpis(summary) : "";
+    node.innerHTML = '<p class="muted" id="cockpit-updated">Updated ' + widgets.esc(updated) + " · refreshes every " + widgets.esc(summary.refresh_seconds || 60) + "s</p>" +
+      '<div class="home-kpis">' + kpis + "</div>" +
+      '<div class="home-grid">' + panels + "</div>" +
+      '<p class="error" id="cockpit-fault" hidden></p>';
     const banner = document.getElementById("start-banner");
     if (banner) banner.hidden = !!(summary.leads && Number(summary.leads.total) > 0);
-    widgets.settle(node);
-    tickClock();
     arm(summary.refresh_seconds);
   }
 
@@ -102,7 +86,7 @@
   function goFrom(hit) {
     if (!hit || !root.LeadPilot) return;
     if (!allowed(hit)) {
-      root.LeadPilot.toast("That instrument is not on your account");
+      root.LeadPilot.toast("That page is not on your account");
       return;
     }
     let tab = hit.getAttribute("data-go");
@@ -144,7 +128,6 @@
   function start() {
     if (started) return;
     started = true;
-    if (!reduced()) clockTimer = root.setInterval(tickClock, 1000);
     document.addEventListener("visibilitychange", function () {
       if (!document.hidden) refresh({quiet: true});
     });
