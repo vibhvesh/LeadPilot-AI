@@ -61,7 +61,7 @@
     const replyButton = item.suggested_reply && href
       ? `<button class="btn" type="button" data-copy-open="social-reply-${item.id}" data-open-url="${esc(href)}">Reply</button>`
       : (item.suggested_reply ? `<button class="btn" type="button" data-copy="social-reply-${item.id}">Copy</button>` : "");
-    const comments = (item.comments || []).map((comment) => `<div class="muted">${esc(comment.author_name || "Teammate")}: ${esc(comment.body)}</div>`).join("");
+    const comments = (item.comments || []).map((comment) => `<div class="muted">${esc(comment.author_name || "Teammate")} · ${esc((comment.created_at || "").slice(0, 16).replace("T", " "))}: ${esc(comment.body)}</div>`).join("");
     const menuId = "social-more-" + item.id;
     const menu = [];
     if (item.suggested_reply) menu.push(`<button type="button" role="menuitem" data-copy="social-reply-${item.id}">Copy reply</button>`);

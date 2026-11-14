@@ -45,6 +45,9 @@ def init_database(url: str) -> None:
 
     upgrade_mascot(engine)
     upgrade_perf(engine)
+    from app.outreach.schema import upgrade as upgrade_outreach
+
+    upgrade_outreach(engine)
 
 
 def _ensure_columns(bound) -> None:

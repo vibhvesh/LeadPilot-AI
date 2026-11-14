@@ -42,4 +42,5 @@ class WorkspaceSettings(Base):
     icp_keywords: Mapped[str] = mapped_column(String(500), default='"staffing services" "agencies welcome"')
     mascot_character: Mapped[str] = mapped_column(String(40), default="hanuman")
     mascot_family_friendly: Mapped[bool] = mapped_column(Boolean, default=False)
+    team_bcc: Mapped[str] = mapped_column(String(500), default="")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)

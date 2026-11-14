@@ -25,6 +25,7 @@ from app.core.seed import seed
 from app.dashboard.router import router as dashboard_router
 from app.followups.router import router as followups_router
 from app.leads.router import router as leads_router
+from app.outreach.router import router as outreach_router
 from app.mascot.router import router as mascot_router
 from app.perf.router import router as perf_router
 from app.providers.router import router as providers_router
@@ -101,6 +102,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(dashboard_router)
     app.include_router(leads_router)
+    app.include_router(outreach_router)
     app.include_router(mascot_router)
     app.include_router(search_router)
     app.include_router(ai_search_router)

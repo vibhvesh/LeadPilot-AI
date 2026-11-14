@@ -145,6 +145,7 @@
 
   <section id="followups" class="page">
     <div class="heading"><div><h1>Follow-ups</h1><div class="muted">Reminders stay in the database until you mark them done.</div></div></div>
+    <div class="card" id="due-today"><h2>Needs action today</h2><label><input type="checkbox" id="coverage-leave"> I am on leave</label><div class="list" id="due-today-list"></div></div>
     <div class="grid2">
       <div class="card">
         <h2>Add a reminder</h2>
@@ -426,6 +427,7 @@
 
   <section id="settings" class="page">
     <div class="heading"><div><h1>Workspace settings</h1><div class="muted">Name, retention, and how this server is configured.</div></div></div>
+    <div class="card" id="outreach-settings" data-manage="settings"></div>
     <div class="grid2">
       <div class="card">
         <h2>Preferences</h2>
@@ -525,6 +527,7 @@
 <script src="/static/dialog.js"></script>
 <script src="/static/nav.js"></script>
 <script src="/static/app.js"></script>
+<script src="/static/outreach.js"></script>
 <script src="/static/search-ui.js"></script>
 <script src="/static/pipeline-ui.js"></script>
 <script src="/static/lead-summary.js"></script>
