@@ -131,10 +131,19 @@
     <div class="card">
       <div class="row">
         <div class="field" style="margin:0;min-width:220px"><label>Search</label><input id="lead-q" placeholder="Company, contact, city"></div>
-        <div class="field" style="margin:0"><label>Status</label><select id="lead-status"><option value="">All</option><option>New</option><option>Contacted</option><option>Qualified</option><option>Won</option><option>Lost</option></select></div>
+        <div class="field" style="margin:0"><label>Owner</label><select id="lead-owner"><option value="">Anyone</option></select></div>
+        <div class="field" style="margin:0"><label>Status</label><select id="lead-status"><option value="">All open</option><option>New</option><option>Contacted</option><option>Replied</option><option>Meeting set</option><option>Proposal</option><option>Qualified</option><option>Won</option><option>Lost</option><option>Not a fit</option></select></div>
+        <label class="muted"><input type="checkbox" id="lead-mine"> My leads</label>
+        <label class="muted"><input type="checkbox" id="lead-closed"> Show closed</label>
         <button class="btn secondary" type="button" id="reload-leads">Refresh</button>
       </div>
-      <div class="tablewrap"><table><thead><tr><th>Company</th><th>Contact</th><th>Source</th><th>Region</th><th>Score</th><th>Status</th></tr></thead><tbody id="lead-rows"></tbody></table></div>
+      <div class="row" id="lead-bulk" hidden>
+        <select id="lead-bulk-owner"><option value="">Assign to...</option></select>
+        <button class="btn small" type="button" id="lead-bulk-assign">Assign</button>
+        <select id="lead-bulk-status"><option value="">Change status...</option></select>
+        <button class="btn small secondary" type="button" id="lead-bulk-move">Update status</button>
+      </div>
+      <div class="tablewrap"><table><thead><tr><th></th><th>Company</th><th>Contact</th><th>Source</th><th>Region</th><th>Score</th><th>Owner</th><th>Status</th></tr></thead><tbody id="lead-rows"></tbody></table></div>
       <div id="lead-detail"></div>
     </div>
   </section>
@@ -527,6 +536,7 @@
 <script src="/static/controls.js"></script>
 <script src="/static/dialog.js"></script>
 <script src="/static/nav.js"></script>
+<script src="/static/lead-manage.js"></script>
 <script src="/static/app.js"></script>
 <script src="/static/outreach.js"></script>
 <script src="/static/search-ui.js"></script>

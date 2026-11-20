@@ -8,7 +8,18 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.core.database import Base
 from app.models.identity import utcnow
 
-LEAD_STATUSES = ("New", "Contacted", "Qualified", "Won", "Lost")
+LEAD_STATUSES = (
+    "New",
+    "Contacted",
+    "Replied",
+    "Meeting set",
+    "Proposal",
+    "Qualified",
+    "Won",
+    "Lost",
+    "Not a fit",
+)
+CLOSED_STATUSES = ("Won", "Lost", "Not a fit")
 
 
 class Lead(Base):
@@ -41,11 +52,25 @@ class Lead(Base):
     reviewed_by: Mapped[str | None] = mapped_column(String(320), nullable=True)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     owner_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    contact_type: Mapped[str] = mapped_column(String(40), default="")
+    close_reason: Mapped[str] = mapped_column(Text, default="")
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     dedup_key: Mapped[str] = mapped_column(String(300), default="", unique=True, index=True)
     raw_payload: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class LeadActivity(Base):
+    __tablename__ = "lead_activity"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    lead_id: Mapped[int] = mapped_column(ForeignKey("leads.id"), index=True)
+    actor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    action: Mapped[str] = mapped_column(String(40), default="")
+    summary: Mapped[str] = mapped_column(String(400), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
 
 
 class FollowUp(Base):

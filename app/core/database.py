@@ -51,6 +51,9 @@ def init_database(url: str) -> None:
     from app.story.schema import upgrade as upgrade_story
 
     upgrade_story(engine)
+    from app.leads.schema import upgrade as upgrade_leads
+
+    upgrade_leads(engine)
 
 
 def _ensure_columns(bound) -> None:
