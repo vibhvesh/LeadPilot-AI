@@ -15,6 +15,7 @@ LEAD_STATUSES = (
     "Meeting set",
     "Proposal",
     "Qualified",
+    "In review",
     "Won",
     "Lost",
     "Not a fit",
@@ -55,6 +56,11 @@ class Lead(Base):
     contact_type: Mapped[str] = mapped_column(String(40), default="")
     close_reason: Mapped[str] = mapped_column(Text, default="")
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    pending_owner_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    pending_from_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    review_outcome: Mapped[str] = mapped_column(String(40), default="")
+    review_reason: Mapped[str] = mapped_column(Text, default="")
+    review_from_status: Mapped[str] = mapped_column(String(40), default="")
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     dedup_key: Mapped[str] = mapped_column(String(300), default="", unique=True, index=True)
     raw_payload: Mapped[dict] = mapped_column(JSON, default=dict)

@@ -9,12 +9,17 @@ from app.leads.service import (
     active_users,
     bulk_assign,
     bulk_status,
+    accept_transfer,
     close_lead,
     create_lead,
+    decide_review,
+    decline_transfer,
     get_lead_or_404,
     lead_dict,
     list_leads,
+    queue_counts,
     reopen_lead,
+    request_close,
     review_lead,
     update_lead,
     _owners,
@@ -31,6 +36,8 @@ def get_leads(
     mine: bool = False,
     show_closed: bool = False,
     contact_type: str | None = None,
+    awaiting_review: bool = False,
+    pending_for_me: bool = False,
     db: Session = Depends(get_db),
     actor=Depends(require_module("leads")),
 ):
@@ -43,7 +50,14 @@ def get_leads(
         actor=actor,
         show_closed=show_closed,
         contact_type=contact_type,
+        awaiting_review=awaiting_review,
+        pending_for_me=pending_for_me,
     )
+
+
+@router.get("/queues")
+def get_queues(db: Session = Depends(get_db), actor=Depends(require_module("leads"))):
+    return queue_counts(db, actor)
 
 
 @router.get("/assignees")
@@ -75,6 +89,26 @@ def get_lead(lead_id: int, db: Session = Depends(get_db), _user=Depends(require_
 @router.patch("/{lead_id}")
 def patch_lead(lead_id: int, body: dict, db: Session = Depends(get_db), actor=Depends(require_module("leads", manage=True))):
     return update_lead(db, actor, lead_id, body)
+
+
+@router.post("/{lead_id}/accept")
+def post_accept(lead_id: int, db: Session = Depends(get_db), actor=Depends(require_module("leads"))):
+    return accept_transfer(db, actor, lead_id)
+
+
+@router.post("/{lead_id}/decline")
+def post_decline(lead_id: int, body: dict, db: Session = Depends(get_db), actor=Depends(require_module("leads"))):
+    return decline_transfer(db, actor, lead_id, str(body.get("reason") or ""))
+
+
+@router.post("/{lead_id}/request-close")
+def post_request_close(lead_id: int, body: dict, db: Session = Depends(get_db), actor=Depends(require_module("leads"))):
+    return request_close(db, actor, lead_id, str(body.get("outcome") or ""), str(body.get("reason") or ""))
+
+
+@router.post("/{lead_id}/review-close")
+def post_review_close(lead_id: int, body: dict, db: Session = Depends(get_db), actor=Depends(require_module("leads"))):
+    return decide_review(db, actor, lead_id, str(body.get("decision") or ""), str(body.get("comment") or ""))
 
 
 @router.post("/{lead_id}/close")

@@ -102,7 +102,7 @@ def post_assign(lead_id: int, body: dict, db: Session = Depends(get_db), actor=D
     from app.leads.service import assign_lead
 
     lead = assign_lead(db, actor, _lead(db, lead_id), int(body.get("user_id") or actor.id))
-    return {"owner_id": lead["owner_id"], "owner_name": lead["owner_name"]}
+    return {"owner_id": lead["owner_id"], "owner_name": lead["owner_name"], "pending_owner_id": lead["pending_owner_id"], "pending_owner_name": lead["pending_owner_name"]}
 
 
 @router.get("/api/outreach/due")

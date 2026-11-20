@@ -207,12 +207,17 @@ async function loadLeads() {
   if ($("lead-owner") && $("lead-owner").value) params.set("owner_id", $("lead-owner").value);
   if ($("lead-mine") && $("lead-mine").checked) params.set("mine", "true");
   if ($("lead-closed") && $("lead-closed").checked) params.set("show_closed", "true");
+  if ($("lead-review") && $("lead-review").checked) params.set("awaiting_review", "true");
+  if ($("lead-pending") && $("lead-pending").checked) params.set("pending_for_me", "true");
   const query = params.toString();
   state.leads = await api("/api/leads" + (query ? "?" + query : ""));
   $("lead-rows").innerHTML = state.leads.length ? state.leads.map((lead) =>
     `<tr class="clicky" data-preview-lead="${lead.id}" data-score="${lead.score ?? ""}" data-status="${esc(lead.status || "")}" data-company="${esc(lead.company || "")}">${window.LeadManage ? LeadManage.cells(lead) : ""}</tr>`
   ).join("") : `<tr><td colspan="8">No leads match. Run a search or add one.</td></tr>`;
-  if (window.LeadManage) LeadManage.bind();
+  if (window.LeadManage) {
+    LeadManage.bind();
+    LeadManage.refreshCounts();
+  }
   if (state.selectedLead) openLead(state.selectedLead, {preview: !!state.previewOnLoad});
   state.previewOnLoad = false;
 }
@@ -279,7 +284,7 @@ async function openLead(id, opts = {}) {
 
 $("toggle-lead-form").addEventListener("click", () => { $("lead-form").hidden = !$("lead-form").hidden; });
 $("reload-leads").addEventListener("click", () => loadLeads().catch((error) => toast(error.message)));
-["lead-status", "lead-owner", "lead-mine", "lead-closed"].forEach((id) => {
+["lead-status", "lead-owner", "lead-mine", "lead-closed", "lead-review", "lead-pending"].forEach((id) => {
   const field = $(id);
   if (field) field.addEventListener("change", () => loadLeads().catch((error) => toast(error.message)));
 });

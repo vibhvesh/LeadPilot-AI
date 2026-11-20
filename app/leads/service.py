@@ -53,6 +53,11 @@ def lead_dict(lead: Lead, owners: dict | None = None) -> dict:
         "close_reason": lead.close_reason or "",
         "closed_at": lead.closed_at.isoformat() if lead.closed_at else None,
         "closed": (lead.status or "") in CLOSED_STATUSES,
+        "pending_owner_id": lead.pending_owner_id,
+        "pending_owner_name": owners.get(lead.pending_owner_id).display_name if owners and owners.get(lead.pending_owner_id) else "",
+        "in_review": lead.status == "In review",
+        "review_outcome": lead.review_outcome or "",
+        "review_reason": lead.review_reason or "",
         "created_at": lead.created_at.isoformat() if lead.created_at else None,
         "updated_at": lead.updated_at.isoformat() if lead.updated_at else None,
     }
@@ -64,7 +69,12 @@ def canonical_status(value: str | None) -> str:
 
 
 def _owners(db: Session, leads: list[Lead]) -> dict:
-    ids = {lead.owner_id for lead in leads if lead.owner_id}
+    ids = set()
+    for lead in leads:
+        if lead.owner_id:
+            ids.add(lead.owner_id)
+        if lead.pending_owner_id:
+            ids.add(lead.pending_owner_id)
     if not ids:
         return {}
     users = db.scalars(select(User).where(User.id.in_(ids))).all()
@@ -103,8 +113,14 @@ def list_leads(
     actor: User | None = None,
     show_closed: bool = False,
     contact_type: str | None = None,
+    awaiting_review: bool = False,
+    pending_for_me: bool = False,
 ) -> list[dict]:
     statement = select(Lead).order_by(Lead.id.desc())
+    if awaiting_review:
+        statement = statement.where(Lead.status == "In review")
+    if pending_for_me and actor is not None:
+        statement = statement.where(Lead.pending_owner_id == actor.id)
     if mine and actor is not None:
         statement = statement.where(Lead.owner_id == actor.id)
     elif owner_id:
@@ -206,6 +222,10 @@ def update_lead(db: Session, actor: User, lead_id: int, payload: dict) -> dict:
         status = canonical_status(payload["status"])
         if status == "Qualified":
             raise AppError("Qualified status requires the human review step")
+        if status == "In review":
+            raise AppError("Submit a close request instead")
+        if status in CLOSED_STATUSES and not is_manager(actor):
+            raise AppError("Only an admin can close a lead", 403)
         if status not in LEAD_STATUSES:
             raise AppError("Unknown lead status")
         if status != lead.status:
@@ -346,9 +366,15 @@ def assign_lead(db: Session, actor: User, lead: Lead, owner_id: int, commit: boo
     person = db.get(User, owner_id)
     if person is None or person.status != "approved":
         raise AppError("That person is not an active user", 404)
-    if lead.owner_id != person.id:
+    if actor.id == person.id:
         lead.owner_id = person.id
-        log_activity(db, lead, actor, "assign", f"{_actor_name(actor)} assigned {_actor_name(person)} as owner")
+        lead.pending_owner_id = None
+        lead.pending_from_id = None
+        log_activity(db, lead, actor, "assign", f"{_actor_name(actor)} took the lead")
+    elif lead.pending_owner_id != person.id:
+        lead.pending_owner_id = person.id
+        lead.pending_from_id = lead.owner_id or actor.id
+        log_activity(db, lead, actor, "transfer_offered", f"{_actor_name(actor)} offered the lead to {_actor_name(person)}")
     if commit:
         db.commit()
         db.refresh(lead)
@@ -371,6 +397,8 @@ def bulk_status(db: Session, actor: User, ids: list[int], status: str, reason: s
     if status not in LEAD_STATUSES or status == "Qualified":
         raise AppError("Unknown lead status")
     note = (reason or "").strip()
+    if status in CLOSED_STATUSES and not is_manager(actor):
+        raise AppError("Only an admin can close a lead", 403)
     if status in CLOSED_STATUSES and len(note) < 3:
         raise AppError("A short reason is required to close leads", 400)
     for lead_id in ids:
@@ -393,8 +421,9 @@ _CLOSE_OUTCOMES = {"won": "Won", "lost": "Lost", "not_a_fit": "Not a fit", "not 
 
 
 def close_lead(db: Session, actor: User, lead_id: int, outcome: str, reason: str) -> dict:
+    if not is_manager(actor):
+        raise AppError("Only an admin can close a lead", 403)
     lead = get_lead_or_404(db, lead_id)
-    _require_touch(actor, lead)
     status = _CLOSE_OUTCOMES.get((outcome or "").strip().lower())
     if status is None:
         raise AppError("Close as won, lost, or not_a_fit", 400)
@@ -404,6 +433,9 @@ def close_lead(db: Session, actor: User, lead_id: int, outcome: str, reason: str
     lead.status = status
     lead.close_reason = note[:500]
     lead.closed_at = utcnow()
+    lead.review_outcome = ""
+    lead.review_reason = ""
+    lead.review_from_status = ""
     log_activity(db, lead, actor, "close", f"{_actor_name(actor)} closed the lead as {status}: {note[:180]}")
     db.commit()
     db.refresh(lead)
@@ -411,8 +443,9 @@ def close_lead(db: Session, actor: User, lead_id: int, outcome: str, reason: str
 
 
 def reopen_lead(db: Session, actor: User, lead_id: int) -> dict:
+    if not is_manager(actor):
+        raise AppError("Only an admin can reopen a lead", 403)
     lead = get_lead_or_404(db, lead_id)
-    _require_touch(actor, lead)
     if lead.status not in CLOSED_STATUSES and lead.closed_at is None:
         raise AppError("This lead is already open", 400)
     lead.status = "Contacted"
@@ -422,3 +455,98 @@ def reopen_lead(db: Session, actor: User, lead_id: int) -> dict:
     db.commit()
     db.refresh(lead)
     return lead_dict(lead, _owners(db, [lead]))
+
+
+def accept_transfer(db: Session, actor: User, lead_id: int) -> dict:
+    lead = get_lead_or_404(db, lead_id)
+    if lead.pending_owner_id != actor.id:
+        raise AppError("This transfer is not waiting on you", 403)
+    lead.owner_id = actor.id
+    lead.pending_owner_id = None
+    lead.pending_from_id = None
+    log_activity(db, lead, actor, "transfer_accepted", f"{_actor_name(actor)} accepted the lead")
+    db.commit()
+    db.refresh(lead)
+    return lead_dict(lead, _owners(db, [lead]))
+
+
+def decline_transfer(db: Session, actor: User, lead_id: int, reason: str) -> dict:
+    lead = get_lead_or_404(db, lead_id)
+    if lead.pending_owner_id != actor.id:
+        raise AppError("This transfer is not waiting on you", 403)
+    note = (reason or "").strip()
+    if len(note) < 3:
+        raise AppError("A short reason is required", 400)
+    lead.owner_id = lead.pending_from_id
+    lead.pending_owner_id = None
+    lead.pending_from_id = None
+    log_activity(db, lead, actor, "transfer_declined", f"{_actor_name(actor)} declined the lead: {note[:180]}")
+    db.commit()
+    db.refresh(lead)
+    return lead_dict(lead, _owners(db, [lead]))
+
+
+def request_close(db: Session, actor: User, lead_id: int, outcome: str, reason: str) -> dict:
+    if is_manager(actor):
+        raise AppError("Admins close leads directly", 400)
+    lead = get_lead_or_404(db, lead_id)
+    _require_touch(actor, lead)
+    if lead.status in CLOSED_STATUSES:
+        raise AppError("This lead is already closed", 400)
+    if lead.status == "In review":
+        raise AppError("This lead is already awaiting review", 400)
+    status = _CLOSE_OUTCOMES.get((outcome or "").strip().lower())
+    if status is None:
+        raise AppError("Request won, lost, or not_a_fit", 400)
+    note = (reason or "").strip()
+    if len(note) < 3:
+        raise AppError("A short reason is required", 400)
+    lead.review_from_status = lead.status
+    lead.review_outcome = status
+    lead.review_reason = note[:500]
+    lead.status = "In review"
+    log_activity(db, lead, actor, "request_close", f"{_actor_name(actor)} asked to close the lead as {status}: {note[:180]}")
+    db.commit()
+    db.refresh(lead)
+    return lead_dict(lead, _owners(db, [lead]))
+
+
+def decide_review(db: Session, actor: User, lead_id: int, decision: str, comment: str = "") -> dict:
+    if not is_manager(actor):
+        raise AppError("Only an admin can review a close request", 403)
+    lead = get_lead_or_404(db, lead_id)
+    if lead.status != "In review":
+        raise AppError("This lead is not awaiting review", 400)
+    choice = (decision or "").strip().lower()
+    if choice == "approve":
+        lead.status = lead.review_outcome or "Lost"
+        lead.close_reason = lead.review_reason or ""
+        lead.closed_at = utcnow()
+        lead.review_outcome = ""
+        lead.review_reason = ""
+        lead.review_from_status = ""
+        log_activity(db, lead, actor, "approve_close", f"{_actor_name(actor)} approved the close as {lead.status}")
+    elif choice == "reject":
+        note = (comment or "").strip()
+        if len(note) < 3:
+            raise AppError("Tell the owner why this stays open", 400)
+        previous = lead.review_from_status or "Contacted"
+        lead.status = previous if previous not in CLOSED_STATUSES else "Contacted"
+        lead.review_outcome = ""
+        lead.review_reason = ""
+        lead.review_from_status = ""
+        db.add(Comment(author_id=actor.id, lead_id=lead.id, body=note[:4000]))
+        log_activity(db, lead, actor, "reject_close", f"{_actor_name(actor)} sent the lead back: {note[:180]}")
+    else:
+        raise AppError("Approve or reject the close request", 400)
+    db.commit()
+    db.refresh(lead)
+    return lead_dict(lead, _owners(db, [lead]))
+
+
+def queue_counts(db: Session, actor: User) -> dict:
+    from sqlalchemy import func
+
+    review = db.scalar(select(func.count()).select_from(Lead).where(Lead.status == "In review")) or 0
+    pending = db.scalar(select(func.count()).select_from(Lead).where(Lead.pending_owner_id == actor.id)) or 0
+    return {"awaiting_review": int(review), "pending_for_me": int(pending)}
