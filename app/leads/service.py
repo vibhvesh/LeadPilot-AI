@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.audit.service import record
 from app.core.errors import AppError
-from app.models import LEAD_STATUSES, Comment, Lead, User
+from app.models import CLOSED_STATUSES, LEAD_STATUSES, Comment, Lead, LeadActivity, User
 from app.models.identity import utcnow
 from app.search.normalize import dedup_key
 
@@ -49,6 +49,10 @@ def lead_dict(lead: Lead, owners: dict | None = None) -> dict:
         "reviewed_by": lead.reviewed_by,
         "owner_id": lead.owner_id,
         "owner_name": owner.display_name if owner else "",
+        "contact_type": lead.contact_type or "",
+        "close_reason": lead.close_reason or "",
+        "closed_at": lead.closed_at.isoformat() if lead.closed_at else None,
+        "closed": (lead.status or "") in CLOSED_STATUSES,
         "created_at": lead.created_at.isoformat() if lead.created_at else None,
         "updated_at": lead.updated_at.isoformat() if lead.updated_at else None,
     }
@@ -67,10 +71,50 @@ def _owners(db: Session, leads: list[Lead]) -> dict:
     return {user.id: user for user in users}
 
 
-def list_leads(db: Session, status: str | None = None, query: str | None = None) -> list[dict]:
+def is_manager(user: User) -> bool:
+    return user.role in {"admin", "super_admin"}
+
+
+def _actor_name(user: User) -> str:
+    return user.display_name or user.email
+
+
+def log_activity(db: Session, lead: Lead, actor: User, action: str, summary: str) -> None:
+    db.add(LeadActivity(lead_id=lead.id, actor_id=actor.id, action=action, summary=summary[:400]))
+
+
+def can_touch(actor: User, lead: Lead) -> bool:
+    if is_manager(actor):
+        return True
+    return lead.owner_id is None or lead.owner_id == actor.id
+
+
+def active_users(db: Session) -> list[dict]:
+    rows = db.scalars(select(User).where(User.status == "approved").order_by(User.display_name, User.email)).all()
+    return [{"id": row.id, "name": row.display_name or row.email, "email": row.email, "role": row.role} for row in rows]
+
+
+def list_leads(
+    db: Session,
+    status: str | None = None,
+    query: str | None = None,
+    owner_id: int | None = None,
+    mine: bool = False,
+    actor: User | None = None,
+    show_closed: bool = False,
+    contact_type: str | None = None,
+) -> list[dict]:
     statement = select(Lead).order_by(Lead.id.desc())
+    if mine and actor is not None:
+        statement = statement.where(Lead.owner_id == actor.id)
+    elif owner_id:
+        statement = statement.where(Lead.owner_id == owner_id)
+    if contact_type:
+        statement = statement.where(Lead.contact_type == contact_type.strip())
     if status:
         statement = statement.where(Lead.status == canonical_status(status))
+    elif not show_closed:
+        statement = statement.where(Lead.status.notin_(CLOSED_STATUSES))
     if query:
         like = f"%{query.strip()}%"
         statement = statement.where(
@@ -114,6 +158,10 @@ def create_lead(db: Session, actor: User, payload: dict) -> dict:
         by_email = db.scalar(select(Lead).where(Lead.email.ilike(email)))
         if by_email is not None:
             raise AppError(f"A lead for {email} already exists ({by_email.company})", 409)
+    contact_type = (payload.get("contact_type") or "").strip()
+    tags = payload.get("tags") or []
+    if not contact_type and isinstance(tags, list) and "linkedin_dm" in tags:
+        contact_type = "linkedin_dm"
     status = canonical_status(payload.get("status") or "New")
     if status == "Qualified":
         raise AppError("Qualified status requires human review")
@@ -136,6 +184,7 @@ def create_lead(db: Session, actor: User, payload: dict) -> dict:
         status=status,
         estimated_value=int(payload.get("estimated_value") or 0),
         notes=(payload.get("notes") or "").strip(),
+        contact_type=contact_type,
         owner_id=payload.get("owner_id") or actor.id,
         created_by=actor.id,
         dedup_key=key,
@@ -152,11 +201,15 @@ def create_lead(db: Session, actor: User, payload: dict) -> dict:
 def update_lead(db: Session, actor: User, lead_id: int, payload: dict) -> dict:
     lead = get_lead_or_404(db, lead_id)
     if "status" in payload and payload["status"] is not None:
+        if not can_touch(actor, lead):
+            raise AppError("You can only change leads you own or leads nobody owns", 403)
         status = canonical_status(payload["status"])
         if status == "Qualified":
             raise AppError("Qualified status requires the human review step")
         if status not in LEAD_STATUSES:
             raise AppError("Unknown lead status")
+        if status != lead.status:
+            log_activity(db, lead, actor, "status", f"{_actor_name(actor)} moved the lead to {status}")
         lead.status = status
     for field in (
         "contact_name",
@@ -178,8 +231,8 @@ def update_lead(db: Session, actor: User, lead_id: int, payload: dict) -> dict:
             setattr(lead, field, str(payload[field]).strip())
     if "estimated_value" in payload and payload["estimated_value"] is not None:
         lead.estimated_value = int(payload["estimated_value"])
-    if "owner_id" in payload:
-        lead.owner_id = payload["owner_id"]
+    if "owner_id" in payload and payload["owner_id"]:
+        assign_lead(db, actor, lead, int(payload["owner_id"]), commit=False)
     if "company" in payload and payload["company"]:
         lead.company = payload["company"].strip()
     lead.dedup_key = dedup_key(lead.company, lead.website or "")
@@ -248,6 +301,7 @@ def ingest_lead(db: Session, actor: User, data: dict, *, source: str, request_id
         company_size=str(data.get("company_size") or "").strip()[:40],
         keywords=str(data.get("keywords") or "").strip()[:500],
         status="New",
+        contact_type=_contact_type(data),
         estimated_value=int(data.get("estimated_value") or 0),
         notes=str(data.get("notes") or data.get("snippet") or "").strip(),
         why_fit=why,
@@ -272,3 +326,99 @@ def ingest_lead(db: Session, actor: User, data: dict, *, source: str, request_id
         db.delete(lead)
         return "below_score"
     return "created"
+
+
+def _contact_type(payload: dict) -> str:
+    contact_type = str(payload.get("contact_type") or "").strip()
+    tags = payload.get("tags") or []
+    if not contact_type and isinstance(tags, list) and "linkedin_dm" in tags:
+        return "linkedin_dm"
+    return contact_type[:40]
+
+
+def _require_touch(actor: User, lead: Lead) -> None:
+    if not can_touch(actor, lead):
+        raise AppError("You can only change leads you own or leads nobody owns", 403)
+
+
+def assign_lead(db: Session, actor: User, lead: Lead, owner_id: int, commit: bool = True) -> dict:
+    _require_touch(actor, lead)
+    person = db.get(User, owner_id)
+    if person is None or person.status != "approved":
+        raise AppError("That person is not an active user", 404)
+    if lead.owner_id != person.id:
+        lead.owner_id = person.id
+        log_activity(db, lead, actor, "assign", f"{_actor_name(actor)} assigned {_actor_name(person)} as owner")
+    if commit:
+        db.commit()
+        db.refresh(lead)
+    return lead_dict(lead, _owners(db, [lead]))
+
+
+def bulk_assign(db: Session, actor: User, ids: list[int], owner_id: int) -> dict:
+    if not ids:
+        raise AppError("Choose at least one lead", 400)
+    for lead_id in ids:
+        assign_lead(db, actor, get_lead_or_404(db, int(lead_id)), int(owner_id), commit=False)
+    db.commit()
+    return {"updated": len(ids)}
+
+
+def bulk_status(db: Session, actor: User, ids: list[int], status: str, reason: str = "") -> dict:
+    if not ids:
+        raise AppError("Choose at least one lead", 400)
+    status = canonical_status(status)
+    if status not in LEAD_STATUSES or status == "Qualified":
+        raise AppError("Unknown lead status")
+    note = (reason or "").strip()
+    if status in CLOSED_STATUSES and len(note) < 3:
+        raise AppError("A short reason is required to close leads", 400)
+    for lead_id in ids:
+        lead = get_lead_or_404(db, int(lead_id))
+        _require_touch(actor, lead)
+        if lead.status == status:
+            continue
+        lead.status = status
+        if status in CLOSED_STATUSES:
+            lead.close_reason = note[:500]
+            lead.closed_at = utcnow()
+            log_activity(db, lead, actor, "close", f"{_actor_name(actor)} closed the lead as {status}: {note[:180]}")
+        else:
+            log_activity(db, lead, actor, "status", f"{_actor_name(actor)} moved the lead to {status}")
+    db.commit()
+    return {"updated": len(ids)}
+
+
+_CLOSE_OUTCOMES = {"won": "Won", "lost": "Lost", "not_a_fit": "Not a fit", "not a fit": "Not a fit"}
+
+
+def close_lead(db: Session, actor: User, lead_id: int, outcome: str, reason: str) -> dict:
+    lead = get_lead_or_404(db, lead_id)
+    _require_touch(actor, lead)
+    status = _CLOSE_OUTCOMES.get((outcome or "").strip().lower())
+    if status is None:
+        raise AppError("Close as won, lost, or not_a_fit", 400)
+    note = (reason or "").strip()
+    if len(note) < 3:
+        raise AppError("A short reason is required", 400)
+    lead.status = status
+    lead.close_reason = note[:500]
+    lead.closed_at = utcnow()
+    log_activity(db, lead, actor, "close", f"{_actor_name(actor)} closed the lead as {status}: {note[:180]}")
+    db.commit()
+    db.refresh(lead)
+    return lead_dict(lead, _owners(db, [lead]))
+
+
+def reopen_lead(db: Session, actor: User, lead_id: int) -> dict:
+    lead = get_lead_or_404(db, lead_id)
+    _require_touch(actor, lead)
+    if lead.status not in CLOSED_STATUSES and lead.closed_at is None:
+        raise AppError("This lead is already open", 400)
+    lead.status = "Contacted"
+    lead.close_reason = ""
+    lead.closed_at = None
+    log_activity(db, lead, actor, "reopen", f"{_actor_name(actor)} reopened the lead")
+    db.commit()
+    db.refresh(lead)
+    return lead_dict(lead, _owners(db, [lead]))

@@ -200,19 +200,24 @@ function fillLeadSelect(select, placeholder) {
 }
 
 async function loadLeads() {
+  if (window.LeadManage) await LeadManage.ensurePeople();
   const params = new URLSearchParams();
   if ($("lead-q").value.trim()) params.set("q", $("lead-q").value.trim());
   if ($("lead-status").value) params.set("status", $("lead-status").value);
+  if ($("lead-owner") && $("lead-owner").value) params.set("owner_id", $("lead-owner").value);
+  if ($("lead-mine") && $("lead-mine").checked) params.set("mine", "true");
+  if ($("lead-closed") && $("lead-closed").checked) params.set("show_closed", "true");
   const query = params.toString();
   state.leads = await api("/api/leads" + (query ? "?" + query : ""));
   $("lead-rows").innerHTML = state.leads.length ? state.leads.map((lead) =>
-    `<tr class="clicky" data-preview-lead="${lead.id}" data-score="${lead.score ?? ""}" data-status="${esc(lead.status || "")}" data-company="${esc(lead.company || "")}"><td>${esc(lead.company)}</td><td>${esc(lead.contact_name || "—")}<div class="muted">${esc(lead.email || "")}</div></td><td>${esc(lead.source)}</td><td>${esc(lead.region || "—")}</td><td>${lead.score ?? "—"}</td><td>${pill(lead.status)}${lead.contacted_badge ? `<div class="muted">${esc(lead.contacted_badge)}</div>` : ""}</td></tr>`
-  ).join("") : `<tr><td colspan="6">No leads match. Run a search or add one.</td></tr>`;
+    `<tr class="clicky" data-preview-lead="${lead.id}" data-score="${lead.score ?? ""}" data-status="${esc(lead.status || "")}" data-company="${esc(lead.company || "")}">${window.LeadManage ? LeadManage.cells(lead) : ""}</tr>`
+  ).join("") : `<tr><td colspan="8">No leads match. Run a search or add one.</td></tr>`;
+  if (window.LeadManage) LeadManage.bind();
   if (state.selectedLead) openLead(state.selectedLead, {preview: !!state.previewOnLoad});
   state.previewOnLoad = false;
 }
 
-const LEAD_STATUSES = ["New", "Contacted", "Qualified", "Won", "Lost"];
+const LEAD_STATUSES = ["New", "Contacted", "Replied", "Meeting set", "Proposal", "Qualified", "Won", "Lost", "Not a fit"];
 
 async function openLead(id, opts = {}) {
   let lead = state.leads.find((item) => item.id === id);
@@ -222,7 +227,6 @@ async function openLead(id, opts = {}) {
   }
   state.selectedLead = id;
   const manage = can("leads", true);
-  const statusOptions = LEAD_STATUSES.map((status) => `<option value="${esc(status)}" ${lead.status === status ? "selected" : ""}>${esc(status)}</option>`).join("");
   $("lead-detail").innerHTML = `${window.LeadSummary ? LeadSummary.render(lead) : ""}
     <div class="note"><b>${esc(lead.company)}</b> ${esc(lead.qualification_summary || "Not scored yet.")}</div>
     <div class="split3">
@@ -231,10 +235,9 @@ async function openLead(id, opts = {}) {
       <div class="item"><b>Web</b>${lead.website ? `<a href="${esc(lead.website)}" target="_blank" rel="noreferrer">${esc(lead.website)}</a>` : "No website yet"}</div>
     </div>
     <div class="field"><label>Notes</label><textarea id="detail-notes">${esc(lead.notes || "")}</textarea></div>
+    ${window.LeadManage ? LeadManage.detailActions(lead, manage) : ""}
     <div class="row">
-      ${manage ? `<div class="field" style="margin:0"><label for="detail-status">Move to column</label><select id="detail-status">${statusOptions}</select></div>
-      <button class="btn small" type="button" id="detail-move">Move</button>
-      <button class="btn secondary small" type="button" id="detail-save">Save notes</button>` : ""}
+      ${manage ? `<button class="btn secondary small" type="button" id="detail-save">Save notes</button>` : ""}
       <button class="btn secondary small" type="button" id="detail-agent">Score in GrokBot</button>
     </div>
     <div class="list" id="detail-comments" style="margin-top:12px"></div>
@@ -253,24 +256,33 @@ async function openLead(id, opts = {}) {
         loadLeads();
       } catch (error) { toast(error.message); }
     };
-    $("detail-move").onclick = async () => {
+    const move = $("detail-move");
+    if (move) move.onclick = async () => {
       const status = $("detail-status").value;
       try {
         if (status === "Qualified") await api("/api/leads/" + id + "/review", {method: "POST", body: {decision: "qualify"}});
-        else await api("/api/leads/" + id, {method: "PATCH", body: {status}});
+        else if (window.LeadManage && LeadManage.CLOSED.includes(status)) {
+          const reason = $("detail-reason") ? $("detail-reason").value : "";
+          const outcome = status === "Won" ? "won" : status === "Lost" ? "lost" : "not_a_fit";
+          await api("/api/leads/" + id + "/close", {method: "POST", body: {outcome, reason}});
+        } else await api("/api/leads/" + id, {method: "PATCH", body: {status}});
         toast("Moved to " + status);
-        if ($("lead-status") && $("lead-status").value && $("lead-status").value !== status) $("lead-status").value = status;
         history.replaceState(null, "", "/leads?id=" + id);
         loadLeads();
       } catch (error) { toast(error.message); }
     };
   }
+  if (window.LeadManage) LeadManage.mountDetail(lead);
   if (opts.preview && window.LeadPreview) LeadPreview.show(lead);
   if (window.LeadOutreach) LeadOutreach.mount(lead).catch((error) => toast(error.message));
 }
 
 $("toggle-lead-form").addEventListener("click", () => { $("lead-form").hidden = !$("lead-form").hidden; });
 $("reload-leads").addEventListener("click", () => loadLeads().catch((error) => toast(error.message)));
+["lead-status", "lead-owner", "lead-mine", "lead-closed"].forEach((id) => {
+  const field = $(id);
+  if (field) field.addEventListener("change", () => loadLeads().catch((error) => toast(error.message)));
+});
 $("save-lead").addEventListener("click", async () => {
   $("lead-error").textContent = "";
   try {

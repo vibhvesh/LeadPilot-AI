@@ -8,7 +8,6 @@ from app.core.database import get_db
 from app.core.deps import get_current_user, require_module
 from app.core.errors import AppError
 from app.models import Lead, User
-from app.models.outreach import LeadEvent
 from app.outreach.service import due_today, preview, record_send, set_team_bcc, take_over, team_bcc, timeline
 from app.outreach.templates import ensure_templates, save_template
 
@@ -99,20 +98,11 @@ def post_note(lead_id: int, body: dict, db: Session = Depends(get_db), actor=Dep
 
 
 @router.post("/api/leads/{lead_id}/assign")
-def post_assign(lead_id: int, body: dict, db: Session = Depends(get_db), actor=Depends(require_module("leads", manage=True))):
-    lead = _lead(db, lead_id)
-    user_id = int(body.get("user_id") or actor.id)
-    person = db.get(User, user_id)
-    if person is None:
-        raise AppError("That person is not on the team", 404)
-    lead.owner_id = person.id
-    db.add(LeadEvent(
-        lead_id=lead.id,
-        actor_id=actor.id,
-        summary=f"{actor.display_name or actor.email} assigned {person.display_name or person.email} as point of contact",
-    ))
-    db.commit()
-    return {"owner_id": person.id, "owner_name": person.display_name}
+def post_assign(lead_id: int, body: dict, db: Session = Depends(get_db), actor=Depends(require_module("leads"))):
+    from app.leads.service import assign_lead
+
+    lead = assign_lead(db, actor, _lead(db, lead_id), int(body.get("user_id") or actor.id))
+    return {"owner_id": lead["owner_id"], "owner_name": lead["owner_name"]}
 
 
 @router.get("/api/outreach/due")

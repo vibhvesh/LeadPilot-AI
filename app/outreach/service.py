@@ -218,9 +218,13 @@ def take_over(db: Session, actor: User, lead: Lead) -> dict:
 def timeline(db: Session, lead: Lead) -> list[dict]:
     from app.models import Comment
 
+    from app.models import LeadActivity
+
     items = []
     for event in db.scalars(select(LeadEvent).where(LeadEvent.lead_id == lead.id)).all():
         items.append({"at": event.created_at, "summary": event.summary})
+    for event in db.scalars(select(LeadActivity).where(LeadActivity.lead_id == lead.id)).all():
+        items.append({"at": event.created_at, "summary": event.summary, "action": event.action})
     for note in db.scalars(select(Comment).where(Comment.lead_id == lead.id)).all():
         author = db.get(User, note.author_id)
         name = author.display_name if author and author.display_name else "Someone"
