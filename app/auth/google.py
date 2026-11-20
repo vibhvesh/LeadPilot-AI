@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 
 DISCOVERY_ATTEMPTS = 3
 RETRY_DELAY_SECONDS = 0.4
-DISCOVERY_TIMEOUT = httpx.Timeout(20.0, connect=10.0)
+DISCOVERY_TIMEOUT = httpx.Timeout(60.0, connect=30.0, read=30.0)
 
 _oauth = OAuth()
 

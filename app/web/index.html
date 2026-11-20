@@ -135,6 +135,8 @@
         <div class="field" style="margin:0"><label>Status</label><select id="lead-status"><option value="">All open</option><option>New</option><option>Contacted</option><option>Replied</option><option>Meeting set</option><option>Proposal</option><option>Qualified</option><option>Won</option><option>Lost</option><option>Not a fit</option></select></div>
         <label class="muted"><input type="checkbox" id="lead-mine"> My leads</label>
         <label class="muted"><input type="checkbox" id="lead-closed"> Show closed</label>
+        <label class="muted" id="lead-review-label"><input type="checkbox" id="lead-review"> Awaiting review <span id="review-badge" class="badge" hidden>0</span></label>
+        <label class="muted"><input type="checkbox" id="lead-pending"> Pending for me <span id="pending-transfer-badge" class="badge" hidden>0</span></label>
         <button class="btn secondary" type="button" id="reload-leads">Refresh</button>
       </div>
       <div class="row" id="lead-bulk" hidden>
